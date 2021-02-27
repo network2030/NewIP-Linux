@@ -1,7 +1,9 @@
 __pycache__/
+
 *.o
 *.ll
 xdp/basic-solutions/xdp_stats
 xdp/basic-solutions/xdp_loader
-xdp/xdp_router/xdp_stats
-xdp/xdp_router/xdp_loader
+xdp/newip_router/xdp_stats
+xdp/newip_router/xdp_loader
+xdp/newip_router/xdp_prog_user
