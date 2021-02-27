@@ -15,13 +15,10 @@ class NewIP(Packet):
         5: 'groupcast'
     }
     fields_desc=[
-        # ShortEnumField('src_addr_type', 1, sh_addr_type),
-        # ShortEnumField('dst_addr_type', 1, sh_addr_type),
-        # ShortEnumField('addr_cast', 1, sh_addr_cast),
-        ByteField('src_addr_type', 1),
-        ByteField('dst_addr_type', 1),
-        ByteField('addr_cast', 1),
-        ByteField('dummy', 7),
+        ByteEnumField('src_addr_type', 1, sh_addr_type),
+        ByteEnumField('dst_addr_type', 1, sh_addr_type),
+        ByteEnumField('addr_cast', 1, sh_addr_cast),
+        ByteEnumField('dummy', 1, sh_addr_cast),
         IPField('src', '127.0.0.1'),
         IPField('dst', '127.0.0.1')
         # ConditionalField(SourceIPField('src', 'dst'), lambda pkt: pkt.src_addr_type == 1),

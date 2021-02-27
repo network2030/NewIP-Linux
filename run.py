@@ -82,7 +82,8 @@ def sender_proc():
     sender_obj.show_packet()
     sender_obj.send_packet()
 
-os.system('make -C xdp/newip_router/')
+if os.system('make -C xdp/newip_router/') != 0:
+    exit()
 with h1:
     os.system('./xdp/newip_router/xdp_loader --progsec xdp_pass --filename ./xdp/newip_router/xdp_prog_kern.o --dev h1_r1')
 with h2:
