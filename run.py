@@ -61,6 +61,7 @@ r1_h3.set_address('10.0.3.1/24')
 # h3_r1.set_address('2001:db8:3333:4444:5555:6666:7777:8888')
 # r1_h3.set_address('2001:db8:3333:4444:CCCC:DDDD:EEEE:FFFF')
 
+r1.enable_ip_forwarding()
 RoutingHelper(protocol='rip').populate_routing_tables()
 
 pp = pprint.PrettyPrinter(indent=4)
@@ -81,13 +82,24 @@ def sender_proc():
     sender_obj.show_packet()
     sender_obj.send_packet()
 
+os.system('make -C xdp/newip_router/')
+with h1:
+    os.system('./xdp/newip_router/xdp_loader --progsec xdp_pass --filename ./xdp/newip_router/xdp_prog_kern.o --dev h1_r1')
+with h2:
+    os.system('./xdp/newip_router/xdp_loader --progsec xdp_pass --filename ./xdp/newip_router/xdp_prog_kern.o --dev h2_r1')
+with r1:
+    os.system('./xdp/newip_router/xdp_loader --progsec xdp_router --filename ./xdp/newip_router/xdp_prog_kern.o --dev r1_h1')
+    os.system('./xdp/newip_router/xdp_loader --progsec xdp_router --filename ./xdp/newip_router/xdp_prog_kern.o --dev r1_h2')
+    os.system('sudo ./xdp/newip_router/xdp_prog_user -d r1_h1')
+    os.system('sudo ./xdp/newip_router/xdp_prog_user -d r1_h2')
+
 with h2:
     receiver_process = multiprocessing.Process(target=receiver_proc)
     receiver_process.start()
 
-with r1:
-    router_process = multiprocessing.Process(target=router_proc)
-    router_process.start()
+# with r1:
+#     router_process = multiprocessing.Process(target=router_proc)
+#     router_process.start()
 
 # Ensure routers and receivers have started
 time.sleep(1)
@@ -97,5 +109,5 @@ with h1:
     sender_process.start()
 
 sender_process.join()
-router_process.join()
+# router_process.join()
 receiver_process.join()

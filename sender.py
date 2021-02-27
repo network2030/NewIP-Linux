@@ -11,7 +11,7 @@ class sender:
         conf.route.resync()
 
     def make_packet(self, dst_addr_type, dst_addr):
-        self.pkt = Ether()/NewIP(dst_addr_type=dst_addr_type, dst=dst_addr)/'hi'
+        self.pkt = Ether()/NewIP(dst_addr_type=1, dst=dst_addr)/'hi'
 
     def populate_hdrs(self):
         # routes = self.ipr.get_routes(dst=self.pkt[NewIP].dst)

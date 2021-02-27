@@ -6,6 +6,7 @@ from nest.routing.routing_helper import RoutingHelper
 class receiver:
     @staticmethod
     def process_pkt(pkt):
+        print('Received Payload:')
         print(pkt[NewIP].payload)
         print(pkt[Raw].load)
 
