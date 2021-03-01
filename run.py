@@ -75,38 +75,56 @@ def router_proc(iface):
     router_obj = router()
     router_obj.start(iface=iface)
 
-def receiver_proc(iface):
-    receiver_obj = receiver()
+def receiver_proc(node_name, iface):
+    receiver_obj = receiver(node_name)
     receiver_obj.start(iface=iface)
 
-
+#TODO setup better way of sending pkts
 def sender_proc():
     sender_obj = sender()
-    sender_obj.make_packet(dst_addr_type='ipv4', dst_addr='10.0.2.2')
+    sender_obj.make_packet(dst_addr_type='ipv4', dst_addr='10.0.2.2', content='msg for h2')
     sender_obj.populate_hdrs()
-    sender_obj.show_packet()
+    # sender_obj.show_packet()
+    sender_obj.send_packet()
+    sender_obj.make_packet(dst_addr_type='ipv4', dst_addr='10.0.3.2', content='msg for h3')
+    sender_obj.populate_hdrs()
+    # sender_obj.show_packet()
     sender_obj.send_packet()
 
+# Verify no errors in xdp programs
 if os.system('make -C xdp/newip_router/') != 0:
     exit()
 
+# Setup xdp programs for bidirectional flow
+#TODO discuss on showing or removing the output from xdp_loader
 with h1:
     os.system('./xdp/newip_router/xdp_loader --progsec xdp_pass --filename ./xdp/newip_router/xdp_prog_kern.o --dev h1_r1')
+with h2:
+    os.system('./xdp/newip_router/xdp_loader --progsec xdp_pass --filename ./xdp/newip_router/xdp_prog_kern.o --dev h2_r2')
+with h3:
+    os.system('./xdp/newip_router/xdp_loader --progsec xdp_pass --filename ./xdp/newip_router/xdp_prog_kern.o --dev h3_r3')
 with r1:
     os.system('./xdp/newip_router/xdp_loader --progsec xdp_router --filename ./xdp/newip_router/xdp_prog_kern.o --dev r1_h1')
     os.system('sudo ./xdp/newip_router/xdp_prog_user -d r1_h1')
-    os.system('./xdp/newip_router/xdp_loader --progsec xdp_pass --filename ./xdp/newip_router/xdp_prog_kern.o --dev r1_r2')
+    os.system('./xdp/newip_router/xdp_loader --progsec xdp_router --filename ./xdp/newip_router/xdp_prog_kern.o --dev r1_r2')
+    os.system('sudo ./xdp/newip_router/xdp_prog_user -d r1_r2')
 with r2:
     os.system('./xdp/newip_router/xdp_loader --progsec xdp_router --filename ./xdp/newip_router/xdp_prog_kern.o --dev r2_r1')
     os.system('sudo ./xdp/newip_router/xdp_prog_user -d r2_r1')
+    os.system('./xdp/newip_router/xdp_loader --progsec xdp_router --filename ./xdp/newip_router/xdp_prog_kern.o --dev r2_h2')
+    os.system('sudo ./xdp/newip_router/xdp_prog_user -d r2_h2')
+with r3:
+    os.system('./xdp/newip_router/xdp_loader --progsec xdp_router --filename ./xdp/newip_router/xdp_prog_kern.o --dev r3_r1')
+    os.system('sudo ./xdp/newip_router/xdp_prog_user -d r3_r1')
+    os.system('./xdp/newip_router/xdp_loader --progsec xdp_router --filename ./xdp/newip_router/xdp_prog_kern.o --dev r3_h3')
+    os.system('sudo ./xdp/newip_router/xdp_prog_user -d r3_h3')
 
 with h2:
-    receiver_process = multiprocessing.Process(target=receiver_proc, args=('h2_r2',))
+    receiver_process = multiprocessing.Process(target=receiver_proc, args=('h2', 'h2_r2',))
     receiver_process.start()
-
-# with r1:
-#     router_process = multiprocessing.Process(target=router_proc, args=('h1_r1',))
-#     router_process.start()
+with h3:
+    receiver_process = multiprocessing.Process(target=receiver_proc, args=('h3', 'h3_r3',))
+    receiver_process.start()
 
 # Ensure routers and receivers have started
 time.sleep(1)
@@ -116,5 +134,5 @@ with h1:
     sender_process.start()
 
 sender_process.join()
-# router_process.join()
 receiver_process.join()
+# XDP programs end when namespaces are deleted
