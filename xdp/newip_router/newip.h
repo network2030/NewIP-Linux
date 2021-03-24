@@ -9,3 +9,9 @@ struct newiphdr
     __u32 src;
     __u32 dst;
 };
+
+struct meta_info
+{
+    __u32 ifindex;
+    __u32 dummy;
+};

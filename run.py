@@ -5,13 +5,10 @@ import nest.config as config
 
 from scapy.all import *
 from newip_hdr import NewIP
-# from pyroute2 import IPRoute
 
 import multiprocessing
 import os
-import pprint
 import subprocess
-import time
 
 from router import router
 from receiver import receiver
@@ -31,6 +28,10 @@ config.set_value('assign_random_names', False)
 #               r3 ---- h3
 #
 ####
+
+# Verify no errors in xdp programs
+if os.system('make -C xdp/newip_router/') != 0:
+    exit()
 
 # Create nodes
 
@@ -69,14 +70,12 @@ r2.enable_ip_forwarding()
 r3.enable_ip_forwarding()
 RoutingHelper(protocol='rip').populate_routing_tables()
 
-pp = pprint.PrettyPrinter(indent=4)
-
 def router_proc(iface):
     router_obj = router()
     router_obj.start(iface=iface)
 
-def receiver_proc(node_name, iface):
-    receiver_obj = receiver(node_name)
+def receiver_proc(node, iface):
+    receiver_obj = receiver(node)
     receiver_obj.start(iface=iface)
 
 #TODO setup better way of sending pkts
@@ -91,39 +90,36 @@ def sender_proc():
     # sender_obj.show_packet()
     sender_obj.send_packet()
 
-# Verify no errors in xdp programs
-if os.system('make -C xdp/newip_router/') != 0:
-    exit()
+def setup_router(node, interfaces):
+    with node:
+        for interface in interfaces:
+            os.system('./xdp/newip_router/xdp_loader --progsec xdp_router --filename ./xdp/newip_router/xdp_prog_kern.o --dev ' + interface.name)
+            os.system('sudo ./xdp/newip_router/xdp_prog_user -d ' + interface.name)
+            os.system('tc qdisc add dev ' + interface.name + ' ingress')
+            os.system('tc filter add dev ' + interface.name + ' ingress bpf da obj ./xdp/newip_router/tc_prog_kern.o sec tc_router')
+
+def setup_host(node, interfaces):
+    with node:
+        for interface in interfaces:
+            os.system('./xdp/newip_router/xdp_loader --progsec xdp_pass --filename ./xdp/newip_router/xdp_prog_kern.o --dev ' + interface.name)
 
 # Setup xdp programs for bidirectional flow
-#TODO discuss on showing or removing the output from xdp_loader
-with h1:
-    os.system('./xdp/newip_router/xdp_loader --progsec xdp_pass --filename ./xdp/newip_router/xdp_prog_kern.o --dev h1_r1')
-with h2:
-    os.system('./xdp/newip_router/xdp_loader --progsec xdp_pass --filename ./xdp/newip_router/xdp_prog_kern.o --dev h2_r2')
-with h3:
-    os.system('./xdp/newip_router/xdp_loader --progsec xdp_pass --filename ./xdp/newip_router/xdp_prog_kern.o --dev h3_r3')
-with r1:
-    os.system('./xdp/newip_router/xdp_loader --progsec xdp_router --filename ./xdp/newip_router/xdp_prog_kern.o --dev r1_h1')
-    os.system('sudo ./xdp/newip_router/xdp_prog_user -d r1_h1')
-    os.system('./xdp/newip_router/xdp_loader --progsec xdp_router --filename ./xdp/newip_router/xdp_prog_kern.o --dev r1_r2')
-    os.system('sudo ./xdp/newip_router/xdp_prog_user -d r1_r2')
-with r2:
-    os.system('./xdp/newip_router/xdp_loader --progsec xdp_router --filename ./xdp/newip_router/xdp_prog_kern.o --dev r2_r1')
-    os.system('sudo ./xdp/newip_router/xdp_prog_user -d r2_r1')
-    os.system('./xdp/newip_router/xdp_loader --progsec xdp_router --filename ./xdp/newip_router/xdp_prog_kern.o --dev r2_h2')
-    os.system('sudo ./xdp/newip_router/xdp_prog_user -d r2_h2')
-with r3:
-    os.system('./xdp/newip_router/xdp_loader --progsec xdp_router --filename ./xdp/newip_router/xdp_prog_kern.o --dev r3_r1')
-    os.system('sudo ./xdp/newip_router/xdp_prog_user -d r3_r1')
-    os.system('./xdp/newip_router/xdp_loader --progsec xdp_router --filename ./xdp/newip_router/xdp_prog_kern.o --dev r3_h3')
-    os.system('sudo ./xdp/newip_router/xdp_prog_user -d r3_h3')
+#TODO discuss on showing or removing the output from xdp_loader and tc
+
+setup_host(h1, [h1_r1])
+setup_host(h2, [h2_r2])
+setup_host(h3, [h3_r3])
+
+setup_router(r1, [r1_h1, r1_r2, r1_r3])
+setup_router(r2, [r2_h2, r2_r1])
+setup_router(r3, [r3_h3, r3_r1])
 
 with h2:
-    receiver_process = multiprocessing.Process(target=receiver_proc, args=('h2', 'h2_r2',))
+    receiver_process = multiprocessing.Process(target=receiver_proc, args=(h2, h2_r2,))
     receiver_process.start()
 with h3:
-    receiver_process = multiprocessing.Process(target=receiver_proc, args=('h3', 'h3_r3',))
+    receiver_process = multiprocessing.Process(target=receiver_proc, args=(h3, h3_r3,))
+
     receiver_process.start()
 
 # Ensure routers and receivers have started
