@@ -15,7 +15,7 @@ from receiver import receiver
 from sender import sender
 
 config.set_value('assign_random_names', False)
-# config.set_value('delete_namespaces_on_termination', False)
+config.set_value('delete_namespaces_on_termination', False)
 
 # TOPOLOGY
 #
@@ -65,6 +65,18 @@ r2_r1.set_address('10.0.4.2/24')
 r1_r3.set_address('10.0.5.1/24')
 r3_r1.set_address('10.0.5.2/24')
 
+h1_r1.set_address('10::1:2/122')
+r1_h1.set_address('10::1:1/122')
+h2_r2.set_address('10::2:2/122')
+r2_h2.set_address('10::2:1/122')
+h3_r3.set_address('10::3:2/122')
+r3_h3.set_address('10::3:1/122')
+r1_r2.set_address('10::4:1/122')
+r2_r1.set_address('10::4:2/122')
+r1_r3.set_address('10::5:1/122')
+r3_r1.set_address('10::5:2/122')
+
+
 r1.enable_ip_forwarding()
 r2.enable_ip_forwarding()
 r3.enable_ip_forwarding()
@@ -85,7 +97,7 @@ def sender_proc():
     sender_obj.populate_hdrs()
     # sender_obj.show_packet()
     sender_obj.send_packet()
-    sender_obj.make_packet(dst_addr_type='ipv4', dst_addr='10.0.3.2', content='msg for h3')
+    sender_obj.make_packet(dst_addr_type='ipv6', dst_addr='10::3:2', content='msg for h3')
     sender_obj.populate_hdrs()
     # sender_obj.show_packet()
     sender_obj.send_packet()

@@ -15,16 +15,28 @@ class NewIP(Packet):
         5: 'groupcast'
     }
     fields_desc=[
-        ByteEnumField('src_addr_type', 1, sh_addr_type),
-        ByteEnumField('dst_addr_type', 1, sh_addr_type),
-        ByteEnumField('addr_cast', 1, sh_addr_cast),
-        ByteEnumField('dummy', 1, sh_addr_cast),
-        IPField('src', '127.0.0.1'),
-        IPField('dst', '127.0.0.1')
-        # ConditionalField(SourceIPField('src', 'dst'), lambda pkt: pkt.src_addr_type == 1),
-        # ConditionalField(DestIPField('dst', '127.0.0.1'), lambda pkt: pkt.dst_addr_type == 1),
-        # ConditionalField(SourceIP6Field('src', 'dst'), lambda pkt: pkt.src_addr_type == 2),
-        # ConditionalField(DestIP6Field('dst', '::1'), lambda pkt: pkt.dst_addr_type == 2)
+        ByteEnumField('src_addr_type', 1, sh_addr_type), # Source Address Type
+        ByteEnumField('dst_addr_type', 1, sh_addr_type), # Destination Address Type
+        ByteEnumField('addr_cast', 1, sh_addr_cast), # Address Cast
+        ByteEnumField('dummy', 1, sh_addr_cast), # Space holder
+        MultipleTypeField( # Source Address
+            [
+                # IPv4
+                (IPField("src", "127.0.0.1"), lambda pkt: pkt.src_addr_type == 1),
+                # IPv6
+                (IP6Field("src", "::1"), lambda pkt: pkt.src_addr_type == 2),
+            ],
+            IPField("src", "127.0.0.1")
+        ),
+        MultipleTypeField( # Destination Address
+            [
+                # IPv4
+                (IPField("dst", "127.0.0.1"), lambda pkt: pkt.dst_addr_type == 1),
+                # IPv6
+                (IP6Field("dst", "::1"), lambda pkt: pkt.dst_addr_type == 2),
+            ],
+            IPField('dst','127.0.0.1')
+        ),
     ]
 
     def mysummary(self):
