@@ -40,7 +40,8 @@ int xdp_router_func(struct xdp_md *ctx)
 	int ret;
 
 	ret = bpf_xdp_adjust_meta(ctx, -(int)sizeof(*meta));
-	if (ret < 0){
+	if (ret < 0)
+	{
 		return XDP_ABORTED;
 	}
 
@@ -64,6 +65,7 @@ int xdp_router_func(struct xdp_md *ctx)
 	h_proto = eth->h_proto;
 	if (h_proto == bpf_htons(ETH_P_NEWIP))
 	{
+		//Sanity check
 		newiph = data + nh_off;
 		if (newiph + 1 > data_end)
 		{
@@ -71,10 +73,37 @@ int xdp_router_func(struct xdp_md *ctx)
 			goto out;
 		}
 
-		fib_params.family = AF_INET;
-		fib_params.tot_len = sizeof(*newiph);
-		fib_params.ipv4_src = newiph->src;
-		fib_params.ipv4_dst = newiph->dst;
+		//Address type check
+		if (newiph->dst_addr_type == 1)
+		{ //ipv4
+			__u32 *ipv4_src = data + nh_off + sizeof(struct newiphdr);
+			__u32 *ipv4_dst = data + nh_off + sizeof(struct newiphdr) + sizeof(__u32);
+			if (ipv4_dst + 1 > data_end)
+			{
+				action = XDP_DROP;
+				bpf_printk("going out\n");
+				goto out;
+			}
+			fib_params.family = AF_INET;
+			fib_params.ipv4_src = *ipv4_src;
+			fib_params.ipv4_dst = *ipv4_dst;
+		}
+		else if (newiph->dst_addr_type == 2)
+		{ //ipv6
+			struct in6_addr *src = (struct in6_addr *)fib_params.ipv6_src;
+			struct in6_addr *dst = (struct in6_addr *)fib_params.ipv6_dst;
+			struct in6_addr *ipv6_src = data + nh_off + sizeof(struct newiphdr);
+			struct in6_addr *ipv6_dst = data + nh_off + sizeof(struct newiphdr) + sizeof(struct in6_addr);
+			if (ipv6_dst + 1 > data_end)
+			{
+				action = XDP_DROP;
+				bpf_printk("going out\n");
+				goto out;
+			}
+			fib_params.family = AF_INET6;
+			*src = *ipv6_src;
+			*dst = *ipv6_dst;
+		}
 	}
 	else
 	{
@@ -92,7 +121,8 @@ int xdp_router_func(struct xdp_md *ctx)
 		memcpy(eth->h_source, fib_params.smac, ETH_ALEN);
 		action = bpf_redirect_map(&tx_port, fib_params.ifindex, 0);
 		meta = (void *)(unsigned long)ctx->data_meta;
-		if(meta + 1 > data){
+		if (meta + 1 > data)
+		{
 			return XDP_ABORTED;
 		}
 		meta->ifindex = fib_params.ifindex;
