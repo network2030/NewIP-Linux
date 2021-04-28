@@ -15,7 +15,7 @@ from receiver import receiver
 from sender import sender
 
 config.set_value('assign_random_names', False)
-config.set_value('delete_namespaces_on_termination', False)
+# config.set_value('delete_namespaces_on_termination', False)
 
 # TOPOLOGY
 #
@@ -64,6 +64,10 @@ r1_r2.set_address('10.0.4.1/24')
 r2_r1.set_address('10.0.4.2/24')
 r1_r3.set_address('10.0.5.1/24')
 r3_r1.set_address('10.0.5.2/24')
+r1.enable_ip_forwarding()
+r2.enable_ip_forwarding()
+r3.enable_ip_forwarding()
+RoutingHelper(protocol='rip').populate_routing_tables()
 
 h1_r1.set_address('10::1:2/122')
 r1_h1.set_address('10::1:1/122')
@@ -76,10 +80,6 @@ r2_r1.set_address('10::4:2/122')
 r1_r3.set_address('10::5:1/122')
 r3_r1.set_address('10::5:2/122')
 
-
-r1.enable_ip_forwarding()
-r2.enable_ip_forwarding()
-r3.enable_ip_forwarding()
 RoutingHelper(protocol='rip').populate_routing_tables()
 
 def router_proc(iface):
@@ -92,21 +92,39 @@ def receiver_proc(node, iface):
 
 #TODO setup better way of sending pkts
 def sender_proc():
+    # # IPv4 to IPv4
     sender_obj = sender()
-    sender_obj.make_packet(dst_addr_type='ipv4', dst_addr='10.0.2.2', content='msg for h2')
-    sender_obj.populate_hdrs()
-    # sender_obj.show_packet()
-    sender_obj.send_packet()
-    sender_obj.make_packet(dst_addr_type='ipv6', dst_addr='10::3:2', content='msg for h3')
+    sender_obj.make_packet(dst_addr_type='ipv4', dst_addr='10.0.3.2', content='msg for h3')
     sender_obj.populate_hdrs()
     # sender_obj.show_packet()
     sender_obj.send_packet()
 
-def setup_router(node, interfaces):
+    # # # other to other
+    # sender_obj.make_packet(src_addr_type = 'other', src_addr = 0b0,dst_addr_type='other', dst_addr=0b10, content='msg for h2')
+    # interface = sender_obj.get_iface('10.0.2.2')
+    # # sender_obj.show_packet()
+    # sender_obj.send_packet(interface = interface)
+    # sender_obj.make_packet(src_addr_type = 'other', src_addr = 0b0,dst_addr_type='other', dst_addr=0b11, content='msg for h3')
+    # interface = sender_obj.get_iface('10.0.3.2')
+    # sender_obj.send_packet(interface = interface)
+
+    # IPv4 to other
+    # sender_obj.make_packet(src_addr_type='ipv4', src_addr='10.0.1.2',dst_addr_type='other', dst_addr=0b10, content='msg for h2')
+    # # sender_obj.show_packet()
+    # interface = sender_obj.get_iface('10.0.2.2')
+    # sender_obj.send_packet(interface = interface)
+
+    # IPv6 to IPv6
+    sender_obj.make_packet(src_addr_type='ipv6',dst_addr_type='ipv6', dst_addr='10::3:2', content='msg for h3')
+    sender_obj.populate_hdrs()
+    # sender_obj.show_packet()
+    sender_obj.send_packet()
+
+def setup_router(node, interfaces, route):
     with node:
         for interface in interfaces:
             os.system('./xdp/newip_router/xdp_loader --progsec xdp_router --filename ./xdp/newip_router/xdp_prog_kern.o --dev ' + interface.name)
-            os.system('sudo ./xdp/newip_router/xdp_prog_user -d ' + interface.name)
+            os.system('sudo ./xdp/newip_router/xdp_prog_user --filename ' + route + ' -d ' + interface.name)
             os.system('tc qdisc add dev ' + interface.name + ' ingress')
             os.system('tc filter add dev ' + interface.name + ' ingress bpf da obj ./xdp/newip_router/tc_prog_kern.o sec tc_router')
 
@@ -122,9 +140,11 @@ setup_host(h1, [h1_r1])
 setup_host(h2, [h2_r2])
 setup_host(h3, [h3_r3])
 
-setup_router(r1, [r1_h1, r1_r2, r1_r3])
-setup_router(r2, [r2_h2, r2_r1])
-setup_router(r3, [r3_h3, r3_r1])
+setup_router(r1, [r1_h1, r1_r2, r1_r3], '2_r1_r2-3_r1_r3')
+setup_router(r2, [r2_h2, r2_r1], '2_r2_h2')
+setup_router(r3, [r3_h3, r3_r1], '3_r3_h3')
+
+# setup_router (r1, [r1_h1, r1_r2, r1_r3], '2_r1_r2-3_r1_r3')
 
 with h2:
     receiver_process = multiprocessing.Process(target=receiver_proc, args=(h2, h2_r2,))
@@ -140,7 +160,6 @@ time.sleep(1)
 with h1:
     sender_process = multiprocessing.Process(target=sender_proc)
     sender_process.start()
-
 sender_process.join()
 receiver_process.join()
 # XDP programs end when namespaces are deleted

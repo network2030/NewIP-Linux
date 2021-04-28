@@ -3,9 +3,9 @@ from scapy.all import *
 class NewIP(Packet):
     name = 'New IP'
     sh_addr_type={
-        1: 'ipv4',
-        2: 'ipv6',
-        3: 'other'
+        0: 'ipv4',
+        1: 'ipv6',
+        2: 'other'
     }
     sh_addr_cast={
         1: 'unicast',
@@ -15,28 +15,32 @@ class NewIP(Packet):
         5: 'groupcast'
     }
     fields_desc=[
-        ByteEnumField('src_addr_type', 1, sh_addr_type), # Source Address Type
-        ByteEnumField('dst_addr_type', 1, sh_addr_type), # Destination Address Type
+        ByteEnumField('src_addr_type', 0, sh_addr_type), # Source Address Type
+        ByteEnumField('dst_addr_type', 0, sh_addr_type), # Destination Address Type
         ByteEnumField('addr_cast', 1, sh_addr_cast), # Address Cast
         ByteEnumField('dummy', 1, sh_addr_cast), # Space holder
-        MultipleTypeField( # Source Address
+        MultipleTypeField(# Source Address
             [
                 # IPv4
-                (IPField("src", "127.0.0.1"), lambda pkt: pkt.src_addr_type == 1),
+                (IPField("src", "127.0.0.1"), lambda pkt: pkt.src_addr_type == 0),
                 # IPv6
-                (IP6Field("src", "::1"), lambda pkt: pkt.src_addr_type == 2),
+                (IP6Field("src", "::1"), lambda pkt: pkt.src_addr_type == 1),
+                #other
+                (ByteField("src", "0"), lambda pkt: pkt.src_addr_type == 2),
             ],
             IPField("src", "127.0.0.1")
         ),
-        MultipleTypeField( # Destination Address
+        MultipleTypeField(# Destination Address
             [
                 # IPv4
-                (IPField("dst", "127.0.0.1"), lambda pkt: pkt.dst_addr_type == 1),
+                (IPField("dst", "127.0.0.1"), lambda pkt: pkt.dst_addr_type == 0),
                 # IPv6
-                (IP6Field("dst", "::1"), lambda pkt: pkt.dst_addr_type == 2),
+                (IP6Field("dst", "::1"), lambda pkt: pkt.dst_addr_type == 1),
+                #other
+                (ByteField("dst", "0"), lambda pkt: pkt.dst_addr_type == 2),
             ],
-            IPField('dst','127.0.0.1')
-        ),
+            IPField("dst", "127.0.0.1")
+        )
     ]
 
     def mysummary(self):

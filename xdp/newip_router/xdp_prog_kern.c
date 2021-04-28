@@ -25,12 +25,21 @@ struct bpf_map_def SEC("maps") tx_port = {
 	.value_size = sizeof(int),
 	.max_entries = 256,
 };
+struct bpf_map_def SEC("maps") static_redirect_8b = {
+	.type = BPF_MAP_TYPE_HASH,
+	.key_size = sizeof(__u8),
+	.value_size = sizeof(__u32),
+	.max_entries = 256,
+};
 
 #define AF_INET 2
 #define AF_INET6 10
 #define IPV6_FLOWINFO_MASK bpf_htonl(0x0FFFFFFF)
 
 #define ETH_P_NEWIP 0x88b6
+#define NEWIP_T_IPv4 0x00
+#define NEWIP_T_IPv6 0x01
+#define NEWIP_T_Other 0x02
 
 /* Solution to packet03/assignment-4 */
 SEC("xdp_router")
@@ -38,7 +47,6 @@ int xdp_router_func(struct xdp_md *ctx)
 {
 	struct meta_info *meta;
 	int ret;
-
 	ret = bpf_xdp_adjust_meta(ctx, -(int)sizeof(*meta));
 	if (ret < 0)
 	{
@@ -49,7 +57,7 @@ int xdp_router_func(struct xdp_md *ctx)
 	void *data = (void *)(long)ctx->data;
 	struct bpf_fib_lookup fib_params = {};
 	struct ethhdr *eth = data;
-	struct newiphdr *newiph;
+	struct newiphdrType *newiphType;
 	__u16 h_proto;
 	__u64 nh_off;
 	int rc;
@@ -65,66 +73,110 @@ int xdp_router_func(struct xdp_md *ctx)
 	h_proto = eth->h_proto;
 	if (h_proto == bpf_htons(ETH_P_NEWIP))
 	{
-		//Sanity check
-		newiph = data + nh_off;
-		if (newiph + 1 > data_end)
+		newiphType = data + nh_off;
+		if (newiphType + 1 > data_end)
 		{
 			action = XDP_DROP;
 			goto out;
 		}
+		meta = (void *)(unsigned long)ctx->data_meta;
+		if (meta + 1 > data){
+			return XDP_ABORTED;
+		}
+		__u8 type_src = newiphType->src_addr_type;
+		__u32 *newiphdr_v4_src;
+		struct in6_addr *newiphdr_v6_src;
+		__u8 *newiphdr_other_src;
+		int size = 0;
+		if (type_src == NEWIP_T_IPv4)
+		{
+			size = sizeof (*newiphdr_v4_src);
+		}
+		else if (type_src == NEWIP_T_IPv6)
+		{
+			size = sizeof (*newiphdr_v6_src);
+		}
+		else if (type_src == NEWIP_T_Other)
+		{
+			size = sizeof (*newiphdr_other_src);
+		}
+		__u8 type_dst = newiphType->dst_addr_type;
+		// IPv4 and IPv6
+		if (type_dst == NEWIP_T_IPv4 || type_dst == NEWIP_T_IPv6)
+			{
+				if (type_dst == NEWIP_T_IPv4)
+					{
+						bpf_printk("inside ipv4 if\n");
+						
+						__u32 *newiphdr_v4_dst;
+						newiphdr_v4_dst = data + nh_off + sizeof (*newiphType) + size;
+						if (newiphdr_v4_dst + 1 > data_end)
+							{
+								action = XDP_DROP;
+								goto out;
+							}
+						fib_params.family = AF_INET;
+						fib_params.ipv4_dst = *newiphdr_v4_dst;
 
-		//Address type check
-		if (newiph->dst_addr_type == 1)
-		{ //ipv4
-			__u32 *ipv4_src = data + nh_off + sizeof(struct newiphdr);
-			__u32 *ipv4_dst = data + nh_off + sizeof(struct newiphdr) + sizeof(__u32);
-			if (ipv4_dst + 1 > data_end)
-			{
-				action = XDP_DROP;
-				bpf_printk("going out\n");
+					}
+				else
+					{
+						struct in6_addr *dst = (struct in6_addr *) fib_params.ipv6_dst;
+						struct in6_addr *newiphdr_v6_dst;
+						newiphdr_v6_dst = data + nh_off + sizeof (*newiphType) + size;
+						if (newiphdr_v6_dst + 1 > data_end)
+							{
+								action = XDP_DROP;
+								goto out;
+							}
+						fib_params.family = AF_INET6;
+						
+						*dst = *newiphdr_v6_dst;
+					}
+			}
+		// Other packets
+		else if (type_dst == NEWIP_T_Other)
+			{	// Update metadata of Non-IP packets and return
+			bpf_printk ("inside other if else\n");
+				__u8 *newiphdr_other_dst;
+				newiphdr_other_dst = data + nh_off + sizeof (*newiphType) + size;
+				if (newiphdr_other_dst + 1 > data_end)
+					{
+						action = XDP_DROP;
+						goto out;
+					}
+				
+				__u32 *ifindex = bpf_map_lookup_elem(&static_redirect_8b, newiphdr_other_dst);
+				if (!ifindex)
+				{	
+					bpf_printk("no ifindex\n");
+					return XDP_ABORTED;
+				}
+				meta->ifindex = *ifindex;
+				action = XDP_PASS;
 				goto out;
 			}
-			fib_params.family = AF_INET;
-			fib_params.ipv4_src = *ipv4_src;
-			fib_params.ipv4_dst = *ipv4_dst;
-		}
-		else if (newiph->dst_addr_type == 2)
-		{ //ipv6
-			struct in6_addr *src = (struct in6_addr *)fib_params.ipv6_src;
-			struct in6_addr *dst = (struct in6_addr *)fib_params.ipv6_dst;
-			struct in6_addr *ipv6_src = data + nh_off + sizeof(struct newiphdr);
-			struct in6_addr *ipv6_dst = data + nh_off + sizeof(struct newiphdr) + sizeof(struct in6_addr);
-			if (ipv6_dst + 1 > data_end)
+		else 
 			{
-				action = XDP_DROP;
-				bpf_printk("going out\n");
 				goto out;
 			}
-			fib_params.family = AF_INET6;
-			*src = *ipv6_src;
-			*dst = *ipv6_dst;
-		}
 	}
 	else
-	{
-		goto out;
-	}
+		{
+			goto out;
+		}
 
+	// Just for IP packets
 	fib_params.ifindex = ctx->ingress_ifindex;
-
 	rc = bpf_fib_lookup(ctx, &fib_params, sizeof(fib_params), 0);
+	bpf_printk("rc: %d\n",rc);
 	switch (rc)
 	{
 	case BPF_FIB_LKUP_RET_SUCCESS: /* lookup successful */
 		/* Only New-IP packets will reach this point */
+		bpf_printk("lookup successfull\n");
 		memcpy(eth->h_dest, fib_params.dmac, ETH_ALEN);
-		memcpy(eth->h_source, fib_params.smac, ETH_ALEN);
-		action = bpf_redirect_map(&tx_port, fib_params.ifindex, 0);
-		meta = (void *)(unsigned long)ctx->data_meta;
-		if (meta + 1 > data)
-		{
-			return XDP_ABORTED;
-		}
+		memcpy(eth->h_source, fib_params.smac, ETH_ALEN);		
 		meta->ifindex = fib_params.ifindex;
 		action = XDP_PASS;
 		break;

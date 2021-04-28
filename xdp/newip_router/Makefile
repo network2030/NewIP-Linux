@@ -2,7 +2,6 @@
 
 XDP_TARGETS  := xdp_prog_kern tc_prog_kern
 USER_TARGETS := xdp_prog_user
-
 LIBBPF_DIR = ../libbpf/src/
 COMMON_DIR = ../common
 
