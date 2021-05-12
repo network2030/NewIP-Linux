@@ -1,5 +1,4 @@
 #include <linux/types.h>
-#include <linux/in6.h>
 
 struct newiphdrType
 {
