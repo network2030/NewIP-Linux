@@ -34,7 +34,6 @@ static const struct option_wrapper long_options[] = {
 
 	{{"dev",         required_argument,	NULL, 'd' },
 	 "Operate on device <ifname>", "<ifname>", true},
-
 	{{"redirect-dev",         required_argument,	NULL, 'r' },
 	 "Redirect to device <ifname>", "<ifname>", true},
 
@@ -43,6 +42,9 @@ static const struct option_wrapper long_options[] = {
 
 	{{"dest-mac", required_argument, NULL, 'R' },
 	 "Destination MAC address of <redirect-dev>", "<mac>", true },
+
+	{{"filename",    required_argument,	NULL,  1  },
+	 "Load program from <file>", "<file>"},
 
 	{{"quiet",       no_argument,		NULL, 'q' },
 	 "Quiet mode (no output)"},
@@ -99,6 +101,19 @@ static int write_iface_params(int map_fd, unsigned char *src, unsigned char *des
 	return 0;
 }
 
+static int static_redirect_non_ip (int map_fd, __u8* dst, __u32* ifindex)
+{
+	if (bpf_map_update_elem (map_fd, dst, ifindex, 0) < 0) {
+		fprintf(stderr,
+			"WARN: Failed to update bpf map file: err(%d):%s\n",
+			errno, strerror(errno));
+		return -1;
+	}
+	printf ("Redirecting dst address: %d to ifindex: %d\n", *dst, *ifindex);
+	return 0;
+}
+
+
 #ifndef PATH_MAX
 #define PATH_MAX 4096
 #endif
@@ -122,7 +137,6 @@ int main(int argc, char **argv)
 
 	/* Cmdline options can change progsec */
 	parse_cmdline_args(argc, argv, long_options, &cfg, __doc__);
-
 	redirect_map = (cfg.ifindex > 0) && (cfg.redirect_ifindex > 0);
 
 	if (cfg.redirect_ifindex > 0 && cfg.ifindex == -1) {
@@ -176,6 +190,38 @@ int main(int argc, char **argv)
 		/* setup 1-1 mapping for the dynamic router */
 		for (i = 1; i < 256; ++i)
 			bpf_map_update_elem(map_fd, &i, &i, 0);
+		/* Open the tx_port map corresponding to the cfg.ifname interface */
+		map_fd = open_bpf_map_file(pin_dir, "static_redirect_8b", NULL);
+		if (map_fd < 0) 
+			{
+				return EXIT_FAIL_BPF;
+			}
+		__u8 nIPdst;
+		__u32 nIPifindex;
+		int cur_pos = 0;
+		while (cur_pos < strlen(cfg.filename))
+		{
+			nIPdst = cfg.filename[cur_pos] - 48;// converting ascii to int
+			cur_pos += 2;
+			int sub_pos = 0;
+			char substr[10];
+			while (sub_pos < 5)
+			{
+				substr[sub_pos] = cfg.filename[cur_pos];
+				cur_pos++;
+				sub_pos++;
+			}
+			nIPifindex = if_nametoindex(substr);
+
+			if (static_redirect_non_ip(map_fd, &nIPdst, &nIPifindex) < 0) 
+			{
+				printf("cant write static redirect map\n");
+				fprintf(stderr, "can't write static redirect map\n");
+				return 1;
+			}
+			cur_pos++;
+		}
+
 	}
 
 	return EXIT_OK;

@@ -1,6 +1,6 @@
 #include <linux/types.h>
 
-struct newiphdr
+struct newiphdrType
 {
     __u8 src_addr_type;
     __u8 dst_addr_type;
