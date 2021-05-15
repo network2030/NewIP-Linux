@@ -161,7 +161,7 @@ static int lbf_dump_stats(struct Qdisc *sch, struct gnet_dump *d)
 {
 	struct lbf_sched_data *q = qdisc_priv(sch);
 	struct tc_lbf_xstats st = {
-		.delay = q->stats.delay
+		.delay = div_u64(PSCHED_TICKS2NS(q->stats.delay), NSEC_PER_USEC)
 	};
 
 	return gnet_stats_copy_app(d, &st, sizeof(st));
