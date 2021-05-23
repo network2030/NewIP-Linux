@@ -146,7 +146,7 @@ int xdp_router_func(struct xdp_md *ctx)
 				action = XDP_DROP;
 				goto out;
 			}
-
+			bpf_printk("8b dst: %d\n",*newiphdr_8b_dst);
 			__u32 *ifindex = bpf_map_lookup_elem(&static_redirect_8b, newiphdr_8b_dst);
 			if (!ifindex)
 			{

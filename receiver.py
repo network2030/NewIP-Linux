@@ -15,3 +15,5 @@ class receiver:
         
     def start (self, iface):
         pkts = sniff(iface=iface.name, filter='ether proto 0x88b6 and inbound', prn=lambda x: self.process_pkt(self, x), timeout=5)
+        # Uncomment the line below to generate pcap files for receiver nodess
+        # wrpcap('NewIP.pcap ' + str(self.node),pkts)

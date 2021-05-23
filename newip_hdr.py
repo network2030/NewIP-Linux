@@ -28,6 +28,10 @@ class ShippingSpec(Packet):
         3: 'broadcast',
         4: 'groupcast'
     }
+    contract_type = {
+        0: 'payload',
+        1: 'contract'
+    }
     fields_desc = [
 
         # Shipping spec
@@ -35,7 +39,7 @@ class ShippingSpec(Packet):
         # Destination Address Type
         ByteEnumField('dst_addr_type', 0, sh_addr_type),
         ByteEnumField('addr_cast', 0, sh_addr_cast),  # Address Cast
-        ByteEnumField('type', 0, sh_addr_cast),  # Type of next Field
+        ByteEnumField('type', 0, contract_type),  # Type of next Field
         MultipleTypeField(  # Source Address
             [
                 # IPv4

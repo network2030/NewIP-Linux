@@ -133,19 +133,20 @@ def sender_proc(node):
     sender_obj.send_packet(iface='h1_r1', show_pkt=True)
 
     # IPv4 to IPv6
-    # sender_obj.make_packet(src_addr_type='ipv4', src_addr='10.0.1.2',
-    #                        dst_addr_type='ipv6', dst_addr='10::3:2', content='ipv4 to ipv6 from h1 to h3')
-    # sender_obj.send_packet(iface='h1_r1')
+    sender_obj.make_packet(src_addr_type='ipv4', src_addr='10.0.1.2',
+                           dst_addr_type='ipv6', dst_addr='10::2:2', content='ipv4 to ipv6 from h1 to h2')
+    sender_obj.insert_contract(contract_type='max_delay_forwarding', params=[400])
+    sender_obj.send_packet(iface='h1_r1')
 
-    # # 8bit to 8bit
-    # sender_obj.make_packet(src_addr_type='8bit', src_addr=0b1,
-    #                        dst_addr_type='8bit', dst_addr=0b10, content='8bit to 8bit from h1 to h2')
-    # sender_obj.send_packet(iface='h1_r1')
+    # 8bit to 8bit
+    sender_obj.make_packet(src_addr_type='8bit', src_addr=0b1,
+                           dst_addr_type='8bit', dst_addr=0b10, content='8bit to 8bit from h1 to h2')
+    sender_obj.send_packet(iface='h1_r1')
 
-    # # 8bit to IPv4
-    # sender_obj.make_packet(src_addr_type='8bit', src_addr=0b1,
-    #                        dst_addr_type='ipv4', dst_addr='10.0.3.2', content='8bit to ipv4 from h1 to h3')
-    # sender_obj.send_packet(iface='h1_r1')
+    # 8bit to IPv4
+    sender_obj.make_packet(src_addr_type='8bit', src_addr=0b1,
+                           dst_addr_type='ipv4', dst_addr='10.0.3.2', content='8bit to ipv4 from h1 to h3')
+    sender_obj.send_packet(iface='h1_r1')
 
 
 def setup_router(node, interfaces):
