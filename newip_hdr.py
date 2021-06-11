@@ -71,9 +71,9 @@ class ShippingSpec(Packet):
 class MaxDelayForwarding(Packet):
     name = 'Max Delay Forwarding Contract'
     fields_desc=[
-        IntField('contract_type', 1),
-        IntField('max_allowed_delay', 500),
-        IntField('delay_exp', 0),
+        ShortField('contract_type', 1),
+        ShortField('max_allowed_delay', 500),
+        ShortField('delay_exp', 0),
     ]
         
 # bind_layers(Ether, NewIP, type=0x88b6)

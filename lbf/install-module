@@ -16,6 +16,7 @@ sudo -u ${SUDO_USER} mkdir tmp
 cp src/linux/sch_lbf.c tmp
 cp src/linux/Makefile tmp
 cp src/pkt_sched.h tmp
+cp src/linux/newip.h tmp
 
 cd tmp
 

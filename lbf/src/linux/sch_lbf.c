@@ -3,23 +3,32 @@
 #include <linux/module.h>
 #include <net/pkt_sched.h>
 
-struct lbf_params {
+#include "newip.h"
+
+#define ETH_P_NEWIP 0x88b6
+
+struct lbf_params
+{
 };
 
-struct lbf_vars {
+struct lbf_vars
+{
 };
 
-struct lbf_stats {
+struct lbf_stats
+{
 	psched_time_t delay;
 };
 
-struct lbf_sched_data {
+struct lbf_sched_data
+{
 	struct lbf_params params;
 	struct lbf_vars vars;
 	struct lbf_stats stats;
 };
 
-struct lbf_skb_cb {
+struct lbf_skb_cb
+{
 	psched_time_t enqueue_time;
 };
 
@@ -54,7 +63,7 @@ static void lbf_set_enqueue_time(struct sk_buff *skb)
 }
 
 static int lbf_enqueue(struct sk_buff *skb, struct Qdisc *sch,
-		       struct sk_buff **to_free)
+					   struct sk_buff **to_free)
 {
 	if (unlikely(qdisc_qlen(sch) >= sch->limit))
 		return qdisc_drop(skb, sch, to_free);
@@ -76,6 +85,34 @@ static struct sk_buff *lbf_dequeue(struct Qdisc *sch)
 
 	q->stats.delay = psched_get_time() - lbf_get_enqueue_time(skb);
 
+	struct ethhdr *eth = (struct ethhdr *)skb_mac_header(skb);
+	if (eth->h_proto == htons(ETH_P_NEWIP))
+	{
+		struct newip_offset *newipoff = (struct newip_offset *)skb_network_header(skb);
+		if (newipoff->contract_offset != newipoff->payload_offset)
+		{
+			struct max_delay_forwarding *mdf = (struct max_delay_forwarding *)(skb_network_header(skb) + newipoff->contract_offset);
+			if (mdf->contract_type == htons(1))
+			{ //Max Delay Forwarding
+				__u16 max_allowed_delay = ntohs(mdf->max_allowed_delay);
+				__u16 delay_exp = ntohs(mdf->delay_exp);
+
+				// printk(KERN_INFO "delay: %d %d %d\n", delay_exp + q->stats.delay, delay_exp, q->stats.delay);
+				if (delay_exp + q->stats.delay > max_allowed_delay)
+				{
+					/* Drop packet */
+					kfree_skb(skb);
+					qdisc_qstats_drop(sch);
+					return NULL;
+				}
+				else
+				{
+					mdf->delay_exp = htons(delay_exp + q->stats.delay);
+				}
+			}
+		}
+	}
+
 	return skb;
 }
 
@@ -85,11 +122,10 @@ static struct sk_buff *lbf_peek(struct Qdisc *sch)
 }
 
 static const struct nla_policy lbf_policy[TCA_LBF_MAX + 1] = {
-	[TCA_LBF_LIMIT] = { .type = NLA_U32 }
-};
+	[TCA_LBF_LIMIT] = {.type = NLA_U32}};
 
 static int lbf_change(struct Qdisc *sch, struct nlattr *opt,
-		      struct netlink_ext_ack *extack)
+					  struct netlink_ext_ack *extack)
 {
 	struct nlattr *tb[TCA_LBF_MAX + 1];
 	int err;
@@ -108,7 +144,7 @@ static int lbf_change(struct Qdisc *sch, struct nlattr *opt,
 }
 
 static int lbf_init(struct Qdisc *sch, struct nlattr *opt,
-		    struct netlink_ext_ack *extack)
+					struct netlink_ext_ack *extack)
 {
 	struct lbf_sched_data *q = qdisc_priv(sch);
 
@@ -161,8 +197,7 @@ static int lbf_dump_stats(struct Qdisc *sch, struct gnet_dump *d)
 {
 	struct lbf_sched_data *q = qdisc_priv(sch);
 	struct tc_lbf_xstats st = {
-		.delay = div_u64(PSCHED_TICKS2NS(q->stats.delay), NSEC_PER_USEC)
-	};
+		.delay = div_u64(PSCHED_TICKS2NS(q->stats.delay), NSEC_PER_USEC)};
 
 	return gnet_stats_copy_app(d, &st, sizeof(st));
 }
@@ -186,39 +221,40 @@ static int lbf_dump_stats(struct Qdisc *sch, struct gnet_dump *d)
 //}
 
 static struct Qdisc_ops lbf_qdisc_ops __read_mostly = {
-	.id			= "lbf",
-	.priv_size		= sizeof(struct lbf_sched_data),
-//	.static_flags		= 0U,
+	.id = "lbf",
+	.priv_size = sizeof(struct lbf_sched_data),
+	//	.static_flags		= 0U,
 
-	.enqueue		= lbf_enqueue,
-	.dequeue		= lbf_dequeue,
-	.peek			= lbf_peek,
+	.enqueue = lbf_enqueue,
+	.dequeue = lbf_dequeue,
+	.peek = lbf_peek,
 
-	.init			= lbf_init,
-	.reset			= lbf_reset,
-	.destroy		= lbf_destroy,
-	.change			= lbf_change,
-//	.attach			= lbf_attach,
-//	.change_tx_queue_len	= lbf_change_tx_queue_len,
+	.init = lbf_init,
+	.reset = lbf_reset,
+	.destroy = lbf_destroy,
+	.change = lbf_change,
+	//	.attach			= lbf_attach,
+	//	.change_tx_queue_len	= lbf_change_tx_queue_len,
 
-	.dump			= lbf_dump,
-	.dump_stats		= lbf_dump_stats,
+	.dump = lbf_dump,
+	.dump_stats = lbf_dump_stats,
 
-//	.ingress_block_set	= lbf_ingress_block_set,
-//	.egress_block_set	= lbf_egress_block_set,
-//	.ingress_block_get	= lbf_ingress_block_get,
-//	.egress_block_get	= lbf_egress_block_get,
+	//	.ingress_block_set	= lbf_ingress_block_set,
+	//	.egress_block_set	= lbf_egress_block_set,
+	//	.ingress_block_get	= lbf_ingress_block_get,
+	//	.egress_block_get	= lbf_egress_block_get,
 
-	.owner			= THIS_MODULE
-};
+	.owner = THIS_MODULE};
 
 static int __init lbf_module_init(void)
 {
+	printk("lbf init\n");
 	return register_qdisc(&lbf_qdisc_ops);
 }
 
 static void __exit lbf_module_exit(void)
 {
+	printk("lbf exit\n");
 	unregister_qdisc(&lbf_qdisc_ops);
 }
 

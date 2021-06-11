@@ -19,9 +19,9 @@ struct shipping_spec
 
 struct max_delay_forwarding
 {
-    __u32 contract_type;
-    __u32 max_allowed_delay;
-    __u32 delay_exp;
+    __u16 contract_type;
+    __u16 max_allowed_delay;
+    __u16 delay_exp;
 };
 
 struct meta_info

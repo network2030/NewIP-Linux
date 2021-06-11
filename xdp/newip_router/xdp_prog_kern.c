@@ -88,9 +88,9 @@ int xdp_router_func(struct xdp_md *ctx)
 			return XDP_ABORTED;
 		}
 		int val = shipping_spec->src_addr_type;
-		bpf_printk("src type: %d\n", val);
+		// bpf_printk("src type: %d\n", val);
 		val = shipping_spec->dst_addr_type;
-		bpf_printk("dst type: %d\n", val);
+		// bpf_printk("dst type: %d\n", val);
 		__u8 type_src = shipping_spec->src_addr_type;
 		__u32 *newiphdr_v4_src;
 		struct in6_addr *newiphdr_v6_src;
@@ -121,7 +121,7 @@ int xdp_router_func(struct xdp_md *ctx)
 			}
 			fib_params.family = AF_INET;
 			fib_params.ipv4_dst = *newiphdr_v4_dst;
-			bpf_printk("v4 dst: %d\n", *newiphdr_v4_dst);
+			// bpf_printk("v4 dst: %d\n", *newiphdr_v4_dst);
 		}
 		else if (type_dst == NEWIP_T_IPv6)
 		{
@@ -146,7 +146,7 @@ int xdp_router_func(struct xdp_md *ctx)
 				action = XDP_DROP;
 				goto out;
 			}
-			bpf_printk("8b dst: %d\n",*newiphdr_8b_dst);
+			// bpf_printk("8b dst: %d\n",*newiphdr_8b_dst);
 			__u32 *ifindex = bpf_map_lookup_elem(&static_redirect_8b, newiphdr_8b_dst);
 			if (!ifindex)
 			{
@@ -163,16 +163,16 @@ int xdp_router_func(struct xdp_md *ctx)
 		//process contract
 		if (newipoff->contract_offset < newipoff->payload_offset)
 		{
-			int * contract_ptr;
-			int contract_type;
+			__u16 *contract_ptr;
+			__u16 contract_type;
 			contract_ptr = data + nh_off + newipoff->contract_offset;
 			if (contract_ptr + 1 > data_end)
 			{
 				action = XDP_DROP;
 				goto out;
 			}
-			contract_type = bpf_ntohl(*contract_ptr);
-			bpf_printk ("contract type: %d\n", contract_type);
+			contract_type = bpf_ntohs(*contract_ptr);
+			// bpf_printk ("contract type: %d\n", contract_type);
 			if(contract_type){
 			}
 			if (contract_type == 1)
@@ -185,7 +185,7 @@ int xdp_router_func(struct xdp_md *ctx)
 				}
 				meta->contract.max_allowed_delay = mdf->max_allowed_delay;
 				meta->contract.delay_exp = mdf->delay_exp;
-				bpf_printk("max allowed delay: %d...delay_exp: %d\n", bpf_ntohl(meta->contract.max_allowed_delay), bpf_ntohl(meta->contract.delay_exp));
+				bpf_printk("max allowed delay: %d...delay_exp: %d\n", bpf_ntohs(meta->contract.max_allowed_delay), bpf_ntohs(meta->contract.delay_exp));
 			}
 		}
 		if (type_dst == NEWIP_T_8b)
@@ -201,16 +201,16 @@ int xdp_router_func(struct xdp_md *ctx)
 	// Just for packets with ip dst
 	fib_params.ifindex = ctx->ingress_ifindex;
 	rc = bpf_fib_lookup(ctx, &fib_params, sizeof(fib_params), 0);
-	bpf_printk("rc: %d\n", rc);
+	// bpf_printk("rc: %d\n", rc);
 	switch (rc)
 	{
 	case BPF_FIB_LKUP_RET_SUCCESS: /* lookup successful */
 		/* Only New-IP packets will reach this point */
-		bpf_printk("lookup successfull\n");
+		// bpf_printk("lookup successfull\n");
 		memcpy(eth->h_dest, fib_params.dmac, ETH_ALEN);
 		memcpy(eth->h_source, fib_params.smac, ETH_ALEN);
 		meta->ifindex = fib_params.ifindex;
-		bpf_printk("ifindex: %d\n", fib_params.ifindex);
+		// bpf_printk("ifindex: %d\n", fib_params.ifindex);
 		action = XDP_PASS;
 		break;
 	case BPF_FIB_LKUP_RET_BLACKHOLE:   /* dest is blackholed; can be dropped */
