@@ -4,13 +4,12 @@ from nest.routing.routing_helper import RoutingHelper
 import nest.config as config
 
 from scapy.all import *
-from newip_hdr import NewIP
 
 import multiprocessing
 import os
 import subprocess
 
-from router import router
+# from router import router
 from receiver import receiver
 from sender import sender
 
@@ -31,6 +30,10 @@ config.set_value('assign_random_names', False)
 
 # Verify no errors in xdp programs
 if os.system('make -C xdp/newip_router/') != 0:
+    exit()
+
+# Verify no errors in qdisc
+if os.system('cd lbf; ./install-module') != 0:  # TODO doesn't seem to work
     exit()
 
 # Create nodes
@@ -126,25 +129,34 @@ def receiver_proc(node, iface):
 
 
 def sender_proc(node):
-    # IPv4 to IPv4
     sender_obj = sender()
+    delay = 100
+    # IPv4 to IPv4
     sender_obj.make_packet(src_addr_type='ipv4', src_addr='10.0.1.2', dst_addr_type='ipv4',
                            dst_addr='10.0.2.2', content='ipv4 to ipv4 from h1 to h2')
+    sender_obj.insert_contract(
+        contract_type='max_delay_forwarding', params=[delay])
     sender_obj.send_packet(iface='h1_r1', show_pkt=True)
 
     # IPv4 to IPv6
     sender_obj.make_packet(src_addr_type='ipv4', src_addr='10.0.1.2',
-                           dst_addr_type='ipv6', dst_addr='10::3:2', content='ipv4 to ipv6 from h1 to h3')
+                           dst_addr_type='ipv6', dst_addr='10::2:2', content='ipv4 to ipv6 from h1 to h2')
+    sender_obj.insert_contract(
+        contract_type='max_delay_forwarding', params=[delay])
     sender_obj.send_packet(iface='h1_r1')
 
     # 8bit to 8bit
     sender_obj.make_packet(src_addr_type='8bit', src_addr=0b1,
                            dst_addr_type='8bit', dst_addr=0b10, content='8bit to 8bit from h1 to h2')
+    sender_obj.insert_contract(
+        contract_type='max_delay_forwarding', params=[delay])
     sender_obj.send_packet(iface='h1_r1')
 
     # 8bit to IPv4
     sender_obj.make_packet(src_addr_type='8bit', src_addr=0b1,
                            dst_addr_type='ipv4', dst_addr='10.0.3.2', content='8bit to ipv4 from h1 to h3')
+    sender_obj.insert_contract(
+        contract_type='max_delay_forwarding', params=[delay])
     sender_obj.send_packet(iface='h1_r1')
 
 
@@ -162,16 +174,19 @@ def setup_router(node, interfaces):
             os.system('tc qdisc add dev ' + interface.name + ' ingress')
             os.system('tc filter add dev ' + interface.name +
                       ' ingress bpf da obj ./xdp/newip_router/tc_prog_kern.o sec tc_router')
+            os.system('tc qdisc replace dev ' + interface.name + ' root lbf')
 
 
 def setup_host(node, interfaces):
     with node:
         for interface in interfaces:
-            os.system(
-                './xdp/newip_router/xdp_loader --progsec xdp_pass --filename ./xdp/newip_router/xdp_prog_kern.o --dev ' + interface.name)
+            # os.system(
+            #     './xdp/newip_router/xdp_loader --progsec xdp_pass --filename ./xdp/newip_router/xdp_prog_kern.o --dev ' + interface.name)
+            os.system('tc qdisc replace dev ' + interface.name + ' root lbf')
 
 # Setup xdp programs for bidirectional flow
 # TODO discuss on showing or removing the output from xdp_loader and tc
+
 
 setup_host(h1, [h1_r1])
 setup_host(h2, [h2_r2])
@@ -198,5 +213,37 @@ with h1:
         target=sender_proc, args=(h1,))
     sender_process.start()
 sender_process.join()
+# with h1:
+#     os.system('sudo tcpreplay -t -l 200 -i h1_r1 newip.pcap')
+    # os.system('sudo tcpreplay -t -l 200 --loopdelay-ms 1 -i h1_r1 newip.pcap')
 receiver_process.join()
 # XDP programs end when namespaces are deleted
+
+# with r1:
+#     conf.route.resync()
+#     conf.route6.resync()
+#     print(conf.route)
+#     print(conf.route6)
+
+
+### Show tc qdisc stats
+# with h1:
+#     print('--h1--')
+#     os.system('tc -s qdisc show')
+# with h2:
+#     print('--h2--')
+#     os.system('tc -s qdisc show')
+# with h3:
+#     print('--h3--')
+#     os.system('tc -s qdisc show')
+# with r1:
+#     print('--r1_r2--')
+#     os.system('tc -s qdisc show dev r1_r2')
+#     print('--r1_r3--')
+#     os.system('tc -s qdisc show dev r1_r3')
+# with r2:
+#     print('--r2_h2--')
+#     os.system('tc -s qdisc show dev r2_h2')
+# with r3:
+#     print('--r3_h3--')
+#     os.system('tc -s qdisc show dev r3_h3')
