@@ -180,8 +180,8 @@ def setup_router(node, interfaces):
 def setup_host(node, interfaces):
     with node:
         for interface in interfaces:
-            # os.system(
-            #     './xdp/newip_router/xdp_loader --progsec xdp_pass --filename ./xdp/newip_router/xdp_prog_kern.o --dev ' + interface.name)
+            os.system(
+                './xdp/newip_router/xdp_loader --progsec xdp_pass --filename ./xdp/newip_router/xdp_prog_kern.o --dev ' + interface.name)
             os.system('tc qdisc replace dev ' + interface.name + ' root lbf')
 
 # Setup xdp programs for bidirectional flow
@@ -226,24 +226,24 @@ receiver_process.join()
 #     print(conf.route6)
 
 
-### Show tc qdisc stats
-# with h1:
-#     print('--h1--')
-#     os.system('tc -s qdisc show')
-# with h2:
-#     print('--h2--')
-#     os.system('tc -s qdisc show')
-# with h3:
-#     print('--h3--')
-#     os.system('tc -s qdisc show')
-# with r1:
-#     print('--r1_r2--')
-#     os.system('tc -s qdisc show dev r1_r2')
-#     print('--r1_r3--')
-#     os.system('tc -s qdisc show dev r1_r3')
-# with r2:
-#     print('--r2_h2--')
-#     os.system('tc -s qdisc show dev r2_h2')
-# with r3:
-#     print('--r3_h3--')
-#     os.system('tc -s qdisc show dev r3_h3')
+## Show tc qdisc stats
+with h1:
+    print('--h1--')
+    os.system('tc -s qdisc show')
+with h2:
+    print('--h2--')
+    os.system('tc -s qdisc show')
+with h3:
+    print('--h3--')
+    os.system('tc -s qdisc show')
+with r1:
+    print('--r1_r2--')
+    os.system('tc -s qdisc show dev r1_r2')
+    print('--r1_r3--')
+    os.system('tc -s qdisc show dev r1_r3')
+with r2:
+    print('--r2_h2--')
+    os.system('tc -s qdisc show dev r2_h2')
+with r3:
+    print('--r3_h3--')
+    os.system('tc -s qdisc show dev r3_h3')

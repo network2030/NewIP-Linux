@@ -24,6 +24,14 @@ struct max_delay_forwarding
     __u16 delay_exp;
 };
 
+struct latency_based_forwarding
+{
+    __u16 contract_type;
+    __u16 min_delay;
+    __u16 max_delay;
+    __u16 experienced_delay;
+};
+
 struct meta_info
 {
     __u32 ifindex;
