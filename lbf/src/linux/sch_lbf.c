@@ -70,6 +70,41 @@ static int lbf_enqueue(struct sk_buff *skb, struct Qdisc *sch,
 
 	lbf_set_enqueue_time(skb);
 
+	struct ethhdr *eth = (struct ethhdr *)skb_mac_header(skb);
+	if (eth->h_proto == htons(ETH_P_NEWIP))
+	{
+		// printk("cb[16]: %d\n", skb->cb[16]);
+		// if(skb->cb[16] == 67){
+		// 	printk("67!!!\n");
+		// }
+		// if (skb->cb[0] == 65)
+		// {
+		// 	printk("65!!!\n");
+		// }
+		// if (skb->cb[20] == 68)
+		// {
+		// 	printk("68!!!\n");
+		// }
+		struct newip_offset *newipoff = (struct newip_offset *)skb_network_header(skb);
+		if (newipoff->contract_offset != newipoff->payload_offset)
+		{
+			void *contract = skb_network_header(skb) + newipoff->contract_offset;
+			if (*(__u16 *)contract == htons(1))
+			{ //Max Delay Forwarding
+				//Should be handled at dequeue
+			}
+			else if (*(__u16 *)contract == htons(2))
+			{ //Latency Based Forwarding
+				struct latency_based_forwarding *lbf = (struct latency_based_forwarding*)contract;
+				__u16 min_delay = lbf->min_delay;
+				__u16 max_delay = lbf->max_delay;
+				__u16 experienced_delay = lbf->experienced_delay;
+
+				
+			}
+		}
+	}
+
 	return qdisc_enqueue_tail(skb, sch);
 }
 

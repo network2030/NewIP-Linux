@@ -44,6 +44,10 @@ int tc_router_func(struct __sk_buff *ctx){
     action =  bpf_redirect(meta->ifindex, 0);
 
 out:
+    // memcpy(ctx->cb, "abcdefghijklmnopqrstuvwxyz", 26);
+    for(int i=0; i<5; i++){
+        ctx->cb[i]=65+i;
+    }
     return action;
 }
 

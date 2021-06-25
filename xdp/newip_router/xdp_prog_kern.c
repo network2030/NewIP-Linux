@@ -185,7 +185,7 @@ int xdp_router_func(struct xdp_md *ctx)
 				}
 				meta->contract.max_allowed_delay = mdf->max_allowed_delay;
 				meta->contract.delay_exp = mdf->delay_exp;
-				bpf_printk("max allowed delay: %d...delay_exp: %d\n", bpf_ntohs(meta->contract.max_allowed_delay), bpf_ntohs(meta->contract.delay_exp));
+				// bpf_printk("max allowed delay: %d...delay_exp: %d\n", bpf_ntohs(meta->contract.max_allowed_delay), bpf_ntohs(meta->contract.delay_exp));
 			}
 		}
 		if (type_dst == NEWIP_T_8b)

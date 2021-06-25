@@ -68,15 +68,28 @@ class ShippingSpec(Packet):
     def mysummary(self):
         return self.sprintf('NewIP %NewIP.type%')
 
+
 class MaxDelayForwarding(Packet):
     name = 'Max Delay Forwarding Contract'
-    fields_desc=[
+    fields_desc = [
         ShortField('contract_type', 1),
         ShortField('max_allowed_delay', 500),
         ShortField('delay_exp', 0),
     ]
-        
+
+
+class LatencyBasedForwarding(Packet):
+    name = 'Latency Based Forwarding'
+    fields_desc = [
+        ShortField('contract_type', 2),
+        ShortField('min_delay', 0),
+        ShortField('max_delay', 0),
+        ShortField('experienced_delay', 0),
+    ]
+
+
 # bind_layers(Ether, NewIP, type=0x88b6)
 bind_layers(Ether, NewIPOffset, type=0x88b6)
 bind_layers(NewIPOffset, ShippingSpec, type=1)
 bind_layers(ShippingSpec, MaxDelayForwarding, type=1)
+bind_layers(ShippingSpec, LatencyBasedForwarding, type=1) #TODO verify if this works
