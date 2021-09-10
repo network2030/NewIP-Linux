@@ -21,3 +21,48 @@ sudo python3 run.py
 ```
 
 from the home directory. This will compile the necessary xdp programs as well.
+
+## Wireshark Setup
+Note: Uncomment line number 22 in receiver.py to enable pcap generation
+
+Steps for New IP Wireshark:
+1. Install Git:
+```bash
+sudo apt install git
+```
+
+2. Install source repository
+```bash
+git clone https://gitlab.com/ameyanrd/wireshark.git
+```
+
+3. Switch the newip branch
+```bash
+cd wireshark
+git switch newip
+```
+
+4. Make wireshark-ninja repo
+```bash
+cd ../
+mkdir wireshark-ninja
+cd wireshark-ninja
+```
+
+5. Install dependencies
+```bash
+sudo apt install cmake ninja-build gcc g++ libglib2.0-dev libpcap-dev libgcrypt20-dev libc-ares-dev flex bison qttools5-dev qtbase5-dev qtmultimedia5-dev
+```
+
+6. cmake and ninja
+```bash
+cmake -G Ninja ../wireshark
+ninja
+```
+
+7. Open the New IP capture
+```bash
+./run/wireshark <pcap filename>
+```
+Sample Wireshark result and pcap available here:
+https://drive.google.com/drive/folders/1aZUx08u1NWxoJv4vY4X5rR-M-PUUI0pK?usp=sharing
