@@ -30,7 +30,8 @@ class ShippingSpec(Packet):
     }
     contract_type = {
         0: 'payload',
-        1: 'contract'
+        1: 'mdf_contract',
+        2: 'lbf_contract'
     }
     fields_desc = [
 
@@ -85,6 +86,8 @@ class LatencyBasedForwarding(Packet):
         ShortField('min_delay', 0),
         ShortField('max_delay', 0),
         ShortField('experienced_delay', 0),
+        ShortField('fib_todelay',0),
+        ShortField('fib_tohops',0),
     ]
 
 
@@ -92,4 +95,4 @@ class LatencyBasedForwarding(Packet):
 bind_layers(Ether, NewIPOffset, type=0x88b6)
 bind_layers(NewIPOffset, ShippingSpec, type=1)
 bind_layers(ShippingSpec, MaxDelayForwarding, type=1)
-bind_layers(ShippingSpec, LatencyBasedForwarding, type=1) #TODO verify if this works
+bind_layers(ShippingSpec, LatencyBasedForwarding, type=2) #TODO verify if this works

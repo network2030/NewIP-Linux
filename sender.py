@@ -1,5 +1,5 @@
 from scapy.all import *
-from newip_hdr import ShippingSpec, NewIPOffset, MaxDelayForwarding
+from newip_hdr import LatencyBasedForwarding, ShippingSpec, NewIPOffset, MaxDelayForwarding
 from nest.routing.routing_helper import RoutingHelper
 
 
@@ -10,12 +10,13 @@ class sender:
         self.contracts = None
         # self.pktdump = PcapWriter('newip.pcap', append=True)
 
-    def make_packet(self, src_addr_type, src_addr, dst_addr_type, dst_addr, content):
+    def make_packet(self, src_addr_type, src_addr, dst_addr_type, dst_addr, content, type):
         self.content = content
         # self.pkt = ShippingSpec(src_addr_type=src_addr_type, src=src_addr,
         #                         dst_addr_type=dst_addr_type, dst=dst_addr)
         self.ship = ShippingSpec(src_addr_type=src_addr_type, src=src_addr,
-                                 dst_addr_type=dst_addr_type, dst=dst_addr)
+                                 dst_addr_type=dst_addr_type, dst=dst_addr,
+                                 type=type)
 
     def insert_contract(self, contract_type, params):
         if self.contracts is None:
@@ -25,12 +26,22 @@ class sender:
                     params = [500]
                 self.contracts = MaxDelayForwarding(
                     max_allowed_delay=params[0])
+            elif contract_type == 'latency_based_forwarding':
+                if params == []:
+                    params = [0,0,0,0]
+                self.contracts = LatencyBasedForwarding(
+                    min_delay=params[0], max_delay = params[1], fib_todelay = params[2], fib_tohops = params[3])
         else:
             if contract_type == 'max_delay_forwarding':
                 if params == []:
                     params = [500]
                 self.contracts = self.contracts / \
                     MaxDelayForwarding(max_allowed_delay=params[0])
+            elif contract_type == 'latency_based_forwarding':
+                if params == []:
+                    params = [0,0,0,0]
+                self.contracts = self.contracts / \
+                LatencyBasedForwarding(min_delay=params[0], max_delay = params[1], fib_todelay = params[2], fib_tohops = params[3])
 
     def send_packet(self, iface, show_pkt=False):
         self.offset = NewIPOffset()

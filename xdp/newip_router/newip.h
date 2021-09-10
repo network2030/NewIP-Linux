@@ -30,6 +30,8 @@ struct latency_based_forwarding
     __u16 min_delay;
     __u16 max_delay;
     __u16 experienced_delay;
+    __u16 fib_todelay;
+    __u16 fib_tohops;
 };
 
 struct meta_info

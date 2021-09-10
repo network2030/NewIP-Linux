@@ -35,7 +35,8 @@ if os.system('make -C xdp/newip_router/') != 0:
 # Verify no errors in qdisc
 if os.system('cd lbf; ./install-module') != 0:  # TODO doesn't seem to work
     exit()
-
+if os.system('cd lbf; ./install-tc-support') != 0: 
+    exit()
 # Create nodes
 
 #h = host
@@ -130,33 +131,45 @@ def receiver_proc(node, iface):
 
 def sender_proc(node):
     sender_obj = sender()
-    delay = 100
+    delay = 500
     # IPv4 to IPv4
     sender_obj.make_packet(src_addr_type='ipv4', src_addr='10.0.1.2', dst_addr_type='ipv4',
-                           dst_addr='10.0.2.2', content='ipv4 to ipv4 from h1 to h2')
+                           dst_addr='10.0.2.2', content='ipv4 to ipv4 from h1 to h2', type='mdf_contract')
     sender_obj.insert_contract(
         contract_type='max_delay_forwarding', params=[delay])
     sender_obj.send_packet(iface='h1_r1', show_pkt=True)
 
     # IPv4 to IPv6
     sender_obj.make_packet(src_addr_type='ipv4', src_addr='10.0.1.2',
-                           dst_addr_type='ipv6', dst_addr='10::2:2', content='ipv4 to ipv6 from h1 to h2')
+                           dst_addr_type='ipv6', dst_addr='10::2:2', content='ipv4 to ipv6 from h1 to h2 more latency', type='lbf_contract')
+    sender_obj.insert_contract(
+        contract_type='latency_based_forwarding', params=[500,800,300,3])   #min_delay, max_delay, fib_todelay, fin_tohops
+    sender_obj.send_packet(iface='h1_r1', show_pkt=True)
+
+    sender_obj.make_packet(src_addr_type='ipv4', src_addr='10.0.1.2',
+                           dst_addr_type='ipv6', dst_addr='10::2:2', content='ipv4 to ipv6 from h1 to h2 less latency', type='lbf_contract')
+    sender_obj.insert_contract(
+        contract_type='latency_based_forwarding', params=[350,380,300,3])   #min_delay, max_delay, fib_todelay, fin_tohops
+    sender_obj.send_packet(iface='h1_r1', show_pkt=True)
+
+    sender_obj.make_packet(src_addr_type='ipv4', src_addr='10.0.1.2',
+                           dst_addr_type='ipv6', dst_addr='10::2:2', content='ipv4 to ipv6 from h1 to h2 much more latency', type='lbf_contract')
+    sender_obj.insert_contract(
+        contract_type='latency_based_forwarding', params=[2000,5000,300,3]) #min_delay, max_delay, fib_todelay, fin_tohops
+    sender_obj.send_packet(iface='h1_r1', show_pkt=True)
+
+    # # 8bit to 8bit
+    sender_obj.make_packet(src_addr_type='8bit', src_addr=0b1,
+                           dst_addr_type='8bit', dst_addr=0b10, content='8bit to 8bit from h1 to h2', type='mdf_contract')
     sender_obj.insert_contract(
         contract_type='max_delay_forwarding', params=[delay])
     sender_obj.send_packet(iface='h1_r1')
 
-    # 8bit to 8bit
+    # # 8bit to IPv4
     sender_obj.make_packet(src_addr_type='8bit', src_addr=0b1,
-                           dst_addr_type='8bit', dst_addr=0b10, content='8bit to 8bit from h1 to h2')
+                           dst_addr_type='ipv4', dst_addr='10.0.3.2', content='8bit to ipv4 from h1 to h3', type='lbf_contract')
     sender_obj.insert_contract(
-        contract_type='max_delay_forwarding', params=[delay])
-    sender_obj.send_packet(iface='h1_r1')
-
-    # 8bit to IPv4
-    sender_obj.make_packet(src_addr_type='8bit', src_addr=0b1,
-                           dst_addr_type='ipv4', dst_addr='10.0.3.2', content='8bit to ipv4 from h1 to h3')
-    sender_obj.insert_contract(
-        contract_type='max_delay_forwarding', params=[delay])
+        contract_type='latency_based_forwarding', params=[500,800,300,3])   #min_delay, max_delay, fib_todelay, fin_tohops
     sender_obj.send_packet(iface='h1_r1')
 
 
@@ -175,6 +188,8 @@ def setup_router(node, interfaces):
             os.system('tc filter add dev ' + interface.name +
                       ' ingress bpf da obj ./xdp/newip_router/tc_prog_kern.o sec tc_router')
             os.system('tc qdisc replace dev ' + interface.name + ' root lbf')
+            # if interface.name == 'r2_h2':       
+            #     os.system('tc qdisc replace dev ' + interface.name + ' root lbf')
 
 
 def setup_host(node, interfaces):

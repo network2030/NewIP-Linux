@@ -1,5 +1,5 @@
 from scapy.all import *
-from newip_hdr import ShippingSpec, NewIPOffset, MaxDelayForwarding
+from newip_hdr import ShippingSpec, NewIPOffset, MaxDelayForwarding, LatencyBasedForwarding
 from nest.routing.routing_helper import RoutingHelper
 
 class receiver:
