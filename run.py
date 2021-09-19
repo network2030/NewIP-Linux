@@ -141,26 +141,32 @@ def sender_proc(node):
 
     # IPv4 to IPv6
     sender_obj.make_packet(src_addr_type='ipv4', src_addr='10.0.1.2',
-                           dst_addr_type='ipv6', dst_addr='10::2:2', content='ipv4 to ipv6 from h1 to h2 more latency', type='lbf_contract')
+                        dst_addr_type='ipv6', dst_addr='10::2:2', content='ipv4 to ipv6 from h1 to h2 more latency', type='lbf_contract')
     sender_obj.insert_contract(
-        contract_type='latency_based_forwarding', params=[500,800,300,3])   #min_delay, max_delay, fib_todelay, fin_tohops
+        contract_type='latency_based_forwarding', params=[0,800,300,3])   #min_delay, max_delay, fib_todelay, fib_tohops
     sender_obj.send_packet(iface='h1_r1', show_pkt=True)
 
     sender_obj.make_packet(src_addr_type='ipv4', src_addr='10.0.1.2',
-                           dst_addr_type='ipv6', dst_addr='10::2:2', content='ipv4 to ipv6 from h1 to h2 less latency', type='lbf_contract')
+                        dst_addr_type='ipv6', dst_addr='10::2:2', content='ipv4 to ipv6 from h1 to h2 more latency', type='lbf_contract')
     sender_obj.insert_contract(
-        contract_type='latency_based_forwarding', params=[350,380,300,3])   #min_delay, max_delay, fib_todelay, fin_tohops
+        contract_type='latency_based_forwarding', params=[500,800,300,3])   #min_delay, max_delay, fib_todelay, fib_tohops
     sender_obj.send_packet(iface='h1_r1', show_pkt=True)
 
     sender_obj.make_packet(src_addr_type='ipv4', src_addr='10.0.1.2',
-                           dst_addr_type='ipv6', dst_addr='10::2:2', content='ipv4 to ipv6 from h1 to h2 much more latency', type='lbf_contract')
+                        dst_addr_type='ipv6', dst_addr='10::2:2', content='ipv4 to ipv6 from h1 to h2 less latency', type='lbf_contract')
     sender_obj.insert_contract(
-        contract_type='latency_based_forwarding', params=[2000,5000,300,3]) #min_delay, max_delay, fib_todelay, fin_tohops
+        contract_type='latency_based_forwarding', params=[350,380,300,3])   #min_delay, max_delay, fib_todelay, fib_tohops
+    sender_obj.send_packet(iface='h1_r1', show_pkt=True)
+
+    sender_obj.make_packet(src_addr_type='ipv4', src_addr='10.0.1.2',
+                        dst_addr_type='ipv6', dst_addr='10::2:2', content='ipv4 to ipv6 from h1 to h2 much more latency', type='lbf_contract')
+    sender_obj.insert_contract(
+        contract_type='latency_based_forwarding', params=[2000,5000,300,3]) #min_delay, max_delay, fib_todelay, fib_tohops
     sender_obj.send_packet(iface='h1_r1', show_pkt=True)
 
     # # 8bit to 8bit
     sender_obj.make_packet(src_addr_type='8bit', src_addr=0b1,
-                           dst_addr_type='8bit', dst_addr=0b10, content='8bit to 8bit from h1 to h2', type='mdf_contract')
+                        dst_addr_type='8bit', dst_addr=0b10, content='8bit to 8bit from h1 to h2', type='mdf_contract')
     sender_obj.insert_contract(
         contract_type='max_delay_forwarding', params=[delay])
     sender_obj.send_packet(iface='h1_r1')
@@ -169,14 +175,17 @@ def sender_proc(node):
     sender_obj.make_packet(src_addr_type='8bit', src_addr=0b1,
                            dst_addr_type='ipv4', dst_addr='10.0.3.2', content='8bit to ipv4 from h1 to h3', type='lbf_contract')
     sender_obj.insert_contract(
-        contract_type='latency_based_forwarding', params=[500,800,300,3])   #min_delay, max_delay, fib_todelay, fin_tohops
+        contract_type='latency_based_forwarding', params=[500,800,300,3])   #min_delay, max_delay, fib_todelay, fib_tohops
+    sender_obj.send_packet(iface='h1_r1')
+
+    sender_obj.make_packet(src_addr_type='8bit', src_addr=0b1,
+                           dst_addr_type='ipv4', dst_addr='10.0.3.2', content='8bit to ipv4 from h1 to h3', type='payload')
     sender_obj.send_packet(iface='h1_r1')
 
 
 def setup_router(node, interfaces):
     route = ''
     for key, value in static_redirect_8b[node.name].items():
-        # TODO verify if extra '-' at end is ok
         route = route + str(key) + '_' + value + '-'
     with node:
         for interface in interfaces:
@@ -188,8 +197,8 @@ def setup_router(node, interfaces):
             os.system('tc filter add dev ' + interface.name +
                       ' ingress bpf da obj ./xdp/newip_router/tc_prog_kern.o sec tc_router')
             os.system('tc qdisc replace dev ' + interface.name + ' root lbf')
-            # if interface.name == 'r2_h2':       
-            #     os.system('tc qdisc replace dev ' + interface.name + ' root lbf')
+            tcpdump_process = multiprocessing.Process (target = tcpdump_proc, args=(interface,))
+            tcpdump_process.start ()
 
 
 def setup_host(node, interfaces):
@@ -198,10 +207,11 @@ def setup_host(node, interfaces):
             os.system(
                 './xdp/newip_router/xdp_loader --progsec xdp_pass --filename ./xdp/newip_router/xdp_prog_kern.o --dev ' + interface.name)
             os.system('tc qdisc replace dev ' + interface.name + ' root lbf')
+            tcpdump_process = multiprocessing.Process (target = tcpdump_proc, args=(interface,))
+            tcpdump_process.start ()
 
-# Setup xdp programs for bidirectional flow
-# TODO discuss on showing or removing the output from xdp_loader and tc
-
+def tcpdump_proc (interface):
+    os.system ('timeout 10 tcpdump -i ' + interface.name + ' -w ' + interface.name +'.pcap')
 
 setup_host(h1, [h1_r1])
 setup_host(h2, [h2_r2])

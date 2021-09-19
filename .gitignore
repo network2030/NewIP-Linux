@@ -3,6 +3,7 @@ __pycache__/
 
 *.o
 *.ll
+*.pcap
 xdp/basic-solutions/xdp_stats
 xdp/basic-solutions/xdp_loader
 xdp/newip_router/xdp_stats

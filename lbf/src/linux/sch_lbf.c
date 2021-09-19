@@ -282,7 +282,6 @@ static int lbf_enqueue(struct sk_buff *skb, struct Qdisc *sch,
 
 	lbf_set_enqueue_time(skb);
 	struct lbf_sched_data* q = qdisc_priv(sch);
-	// printk("skb in enqueue: %d",skb);
 	struct ethhdr *eth = (struct ethhdr *)skb_mac_header(skb);
 	if (eth->h_proto == htons(ETH_P_NEWIP))
 	{
@@ -313,7 +312,7 @@ static int lbf_enqueue(struct sk_buff *skb, struct Qdisc *sch,
 				__u16 h_delay = 100;
 
 				// Updating experienced delay 
-				lbf->experienced_delay = lbf->experienced_delay + htons(h_delay);
+				lbf->experienced_delay = htons(ntohs(lbf->experienced_delay) + h_delay);
 				lbf->fib_todelay = htons(ntohs(lbf->fib_todelay) - h_delay);
 
 				__u16 e_delay_new = ntohs(lbf->experienced_delay);
@@ -327,7 +326,7 @@ static int lbf_enqueue(struct sk_buff *skb, struct Qdisc *sch,
 				__u16 lqmax = lbf_get_max_delay (e_delay_new, max_delay, fib_todelay, fib_tohops);
 				printk("lqmax in enqueue %d",lqmax);
 				printk("min_delay %d,",min_delay);
-				printk("e_delay_new %d,",e_delay_new);
+				printk("e_delay_new %d,",ntohs(lbf->experienced_delay));
 				printk("fib_todelay %d,",fib_todelay);
 				printk("fib_tohops %d,",fib_tohops);
 
@@ -367,7 +366,7 @@ static int lbf_enqueue(struct sk_buff *skb, struct Qdisc *sch,
 				if (badpkt) 
 				{
 					printk("bad packet problem\n"); 
-					return -1;	// TODO handle return on failure properly with NET_XMIT_BYPASS something
+					return -1;
 				}
 				    
 
@@ -464,7 +463,6 @@ static inline struct lbf_pnode* search_next_pnode(struct lbf_sched_data *q)
 				}
 				else
 				{
-					// printk("not expired %lld",curr_pnode->tmax_nsec-curr_time);
 					if (curr_pnode->tmin_nsec < tmin)
 					{
 						tmin = curr_pnode->tmin_nsec;
@@ -521,7 +519,7 @@ static inline struct lbf_pnode* search_now_pnode(struct lbf_sched_data *q)
 					}
 					else 
 					{
-						printk("spent %lld",(curr_pnode->tmax_nsec-curr_time)/1000000);
+						printk("Left time %lld",(curr_pnode->tmax_nsec-curr_time)/1000000);
 						printk("found packet to be dequeued");
 						return curr_pnode;
 						// found packet to be dequeued
@@ -529,8 +527,6 @@ static inline struct lbf_pnode* search_now_pnode(struct lbf_sched_data *q)
 				}
 				else
 				{
-					// printk("early %lld",curr_pnode->tmin_nsec-curr_time);
-					// printk("early packet");
 					// early packet. move to next hnode, end current pnode queue
 					curr_pnode = NULL;
 				}
@@ -553,10 +549,7 @@ static struct sk_buff *lbf_dequeue(struct Qdisc *sch)
 
 	if (q->next_pnode != NULL)
 	{
-		// printk ("in q->next_pnode != NULL");
-		// printk ("next_node %d", q->next_pnode);
 		printk("left time: %lld",(q->next_pnode->tmax_nsec-curr_time)/1000000);
-		// return NULL;
 		if (q->next_pnode->tmax_nsec < curr_time)
 		{
 			printk("packet expired, maybe watchdog is late");
@@ -578,9 +571,7 @@ static struct sk_buff *lbf_dequeue(struct Qdisc *sch)
 		
 	}
 
-	// printk("next_pnode is null");
 	struct lbf_pnode* pnode_now = search_now_pnode(q);
-	// printk("pnode now: %d",pnode_now);
 	if (pnode_now != NULL)
 	{
 		skb = pnode_now->realpkt;
@@ -589,46 +580,23 @@ static struct sk_buff *lbf_dequeue(struct Qdisc *sch)
 	}
 	
 	next_pnode = search_next_pnode (q);
-	// printk("search next pnode: %d",q->next_pnode);
 	
 	if (next_pnode != NULL && next_pnode != q->next_pnode)
 	{
 		q->next_pnode = next_pnode;
 		qdisc_watchdog_schedule_ns(&q->watchdog, q->next_pnode->tmin_nsec);
 	}
-	// printk("skb in dequeue: %d",skb);
 	if (skb != NULL)
 	{
 		q->stats.delay = PSCHED_TICKS2NS(psched_get_time() - lbf_get_enqueue_time(skb))/NSEC_PER_USEC;
-		printk("Time stayed in queue: %d",PSCHED_TICKS2NS(psched_get_time() - lbf_get_enqueue_time(skb))/1000000);
+		printk("Time stayed in queue: %d",q->stats.delay/USEC_PER_MSEC);
 		struct newip_offset *newipoff = (struct newip_offset *)skb_network_header(skb);
 		if (newipoff->contract_offset != newipoff->payload_offset)
 		{
 			void *contract = skb_network_header(skb) + newipoff->contract_offset;
-			if (*(__u16 *)contract == htons(1))
-			{ //Max Delay Forwarding
-				// struct max_delay_forwarding *mdf = (struct max_delay_forwarding *)(skb_network_header(skb) + newipoff->contract_offset);
-				// __u16 max_allowed_delay = ntohs(mdf->max_allowed_delay);
-				// __u16 delay_exp = ntohs(mdf->delay_exp);
-
-				// printk(KERN_INFO "delay: %lld %d %lld\n", delay_exp + q->stats.delay, delay_exp, q->stats.delay);
-				// if (delay_exp + q->stats.delay > max_allowed_delay)
-				// {
-				// 	/* Drop packet */
-				// 	kfree_skb(skb);
-				// 	qdisc_qstats_drop(sch);
-				// 	return NULL;
-				// }
-				// else
-				// {
-				// 	mdf->delay_exp = htons(delay_exp + q->stats.delay);
-				// }
-			}
-			else if (*(__u16 *)contract == htons(2))
-			{ //Latency Based Forwarding
-				struct latency_based_forwarding *lbf = (struct latency_based_forwarding*)contract;
-				lbf->experienced_delay += htons (q->stats.delay/USEC_PER_MSEC);
-			}
+			struct latency_based_forwarding *lbf = (struct latency_based_forwarding*)contract;
+			lbf->experienced_delay += htons (q->stats.delay/USEC_PER_MSEC);
+			printk ("updated experienced delay %d", ntohs(lbf->experienced_delay));
 		}
 	}
 
@@ -830,6 +798,6 @@ module_init(lbf_module_init);
 module_exit(lbf_module_exit);
 
 MODULE_DESCRIPTION("Latency Based Forwarding queue discipline");
-MODULE_AUTHOR(""); /* TODO: Bhaskar's Name */
-MODULE_AUTHOR(""); /* TODO: Rohit's Name */
+MODULE_AUTHOR("Bhaskar Kataria");
+MODULE_AUTHOR("Rohit MP");
 MODULE_LICENSE("GPL v2");
