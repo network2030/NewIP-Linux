@@ -10,13 +10,13 @@ class sender:
         self.contracts = None
         # self.pktdump = PcapWriter('newip.pcap', append=True)
 
-    def make_packet(self, src_addr_type, src_addr, dst_addr_type, dst_addr, content, type):
+    def make_packet(self, src_addr_type, src_addr, dst_addr_type, dst_addr, content):
         self.content = content
         # self.pkt = ShippingSpec(src_addr_type=src_addr_type, src=src_addr,
         #                         dst_addr_type=dst_addr_type, dst=dst_addr)
         self.ship = ShippingSpec(src_addr_type=src_addr_type, src=src_addr,
-                                 dst_addr_type=dst_addr_type, dst=dst_addr,
-                                 type=type)
+                                 dst_addr_type=dst_addr_type, dst=dst_addr
+                                 )
 
     def insert_contract(self, contract_type, params):
         if self.contracts is None:

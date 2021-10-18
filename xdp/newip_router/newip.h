@@ -5,7 +5,6 @@ struct newip_offset
     __u8 shipping_offset;
     __u8 contract_offset;
     __u8 payload_offset;
-    __u8 type;
 };
 
 struct shipping_spec
@@ -13,7 +12,6 @@ struct shipping_spec
     __u8 src_addr_type;
     __u8 dst_addr_type;
     __u8 addr_cast;
-    __u8 type;
 };
 // src and dst are accessed outside the struct
 
