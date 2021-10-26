@@ -32,14 +32,15 @@ def receiver_proc(node, iface):
     receiver_obj = receiver(node)
     receiver_obj.start(iface=iface)
 
-def setup_host(node, interfaces):
+def setup_host(node, interfaces, pcap):
     with node:
         for interface in interfaces:
             os.system(
                 './xdp/newip_router/xdp_loader --progsec xdp_pass --filename ./xdp/newip_router/xdp_prog_kern.o --dev ' + interface.name)
             os.system('tc qdisc replace dev ' + interface.name + ' root lbf')
-            tcpdump_process = multiprocessing.Process (target = tcpdump_proc, args=(interface,))
-            tcpdump_process.start ()
+            if pcap:
+                tcpdump_process = multiprocessing.Process (target = tcpdump_proc, args=(interface,))
+                tcpdump_process.start ()
 
 # Create 'routing table' for 8bit address
 static_redirect_8b = {
@@ -72,7 +73,7 @@ static_redirect_8b = {
     },
 }
 
-def setup_router(node, interfaces):
+def setup_router(node, interfaces, pcap):
     route = ''
     for key, value in static_redirect_8b[node.name].items():
         route = route + str(key) + '_' + value + '-'
@@ -86,8 +87,9 @@ def setup_router(node, interfaces):
             os.system('tc filter add dev ' + interface.name +
                     ' ingress bpf da obj ./xdp/newip_router/tc_prog_kern.o sec tc_router')
             os.system('tc qdisc replace dev ' + interface.name + ' root lbf')
-            tcpdump_process = multiprocessing.Process (target = tcpdump_proc, args=(interface,))
-            tcpdump_process.start ()
+            if pcap:
+                tcpdump_process = multiprocessing.Process (target = tcpdump_proc, args=(interface,))
+                tcpdump_process.start ()
 
 class setup:
     def start_receiver (self):
@@ -103,7 +105,7 @@ class setup:
         time.sleep(1)
 
 
-    def setup_topology(self):
+    def setup_topology(self, pcap = True):
         config.set_value('assign_random_names', False)
         # config.set_value('delete_namespaces_on_termination', False)
 
@@ -167,12 +169,12 @@ class setup:
 
         RoutingHelper(protocol='rip').populate_routing_tables()
 
-        setup_host(self.h1, [self.h1_r1])
-        setup_host(self.h2, [self.h2_r2])
-        setup_host(self.h3, [self.h3_r3])
-        setup_router(self.r1, [self.r1_h1, self.r1_r2, self.r1_r3])
-        setup_router(self.r2, [self.r2_h2, self.r2_r1])
-        setup_router(self.r3, [self.r3_h3, self.r3_r1])
+        setup_host(self.h1, [self.h1_r1], pcap)
+        setup_host(self.h2, [self.h2_r2], pcap)
+        setup_host(self.h3, [self.h3_r3], pcap)
+        setup_router(self.r1, [self.r1_h1, self.r1_r2, self.r1_r3], pcap)
+        setup_router(self.r2, [self.r2_h2, self.r2_r1], pcap)
+        setup_router(self.r3, [self.r3_h3, self.r3_r1], pcap)
 
     def show_stats (self):
         with self.h1:
