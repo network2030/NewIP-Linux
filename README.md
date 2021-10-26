@@ -14,13 +14,19 @@ Dependencies for XDP can be installed by going through [this document](https://g
 
 ## Running
 
-To run an experiment based on the nest topology, just run:
+To run an example based on the nest topology, just run:
 
 ```bash
-sudo python3 run.py
+sudo python3 example_v4-v6.py
 ```
 
 from the home directory. This will compile the necessary xdp programs as well.
+
+## Provided examples
+- example_v4-v6.py: Sends packet from IPv4 address to IPv6 address.
+- example_v4-8bit.py: Sends packet from IPv4 address to 8bit address.
+- example_max-latency.py: Sends a packet with LBF contract with just the max latency of 800ms.
+- example_lbf.py: Sends a packet with LBF contract with min latency 500ms and max latency 800ms.
 
 ## Wireshark Setup
 Note: Uncomment line number 22 in receiver.py to enable pcap generation
