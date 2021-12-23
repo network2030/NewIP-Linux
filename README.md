@@ -10,6 +10,10 @@ git submodule update --init
 
 [nest](https://gitlab.com/nitk-nest/nest/-/blob/master/INSTALL.md) python package is used to help setup network topologies and populate routing tables. You can follow the installation instructions [here](https://gitlab.com/nitk-nest/nest/-/blob/master/INSTALL.md)
 
+Python package [scapy](https://scapy.net/) is required for New-IP packet generation which can installed with:
+```bash
+sudo apt install python3-scapy
+```
 Dependencies for XDP can be installed by going through [this document](https://github.com/xdp-project/xdp-tutorial/blob/master/setup_dependencies.org)
 
 ## Running
