@@ -26,8 +26,6 @@ struct bpf_map_def SEC("maps") static_redirect_8b = {
 	.max_entries = 256,
 };
 
-#define AF_INET 2
-#define AF_INET6 10
 #define IPV6_FLOWINFO_MASK bpf_htonl(0x0FFFFFFF)
 
 #define ETH_P_NEWIP 0x88b6
@@ -87,9 +85,9 @@ int xdp_router_func(struct xdp_md *ctx)
 		{
 			return XDP_ABORTED;
 		}
-		int val = shipping_spec->src_addr_type;
+		// int val = shipping_spec->src_addr_type;
 		// bpf_printk("src type: %d\n", val);
-		val = shipping_spec->dst_addr_type;
+		// val = shipping_spec->dst_addr_type;
 		// bpf_printk("dst type: %d\n", val);
 		__u8 type_src = shipping_spec->src_addr_type;
 		__u32 *newiphdr_v4_src;

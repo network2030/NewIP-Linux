@@ -12,8 +12,6 @@
 
 #include "newip.h"
 
-#define AF_INET 2
-#define AF_INET6 10
 #define ETH_P_NEWIP 0x88b6
 
 struct lbf_skb_cb

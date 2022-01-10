@@ -105,20 +105,27 @@ class setup:
         time.sleep(1)
 
 
-    def setup_topology(self, pcap = True):
+    def setup_topology(self, pcap = True, routing = "frr", buildLbf = False):
         config.set_value('assign_random_names', False)
         # config.set_value('delete_namespaces_on_termination', False)
 
+        if routing == "quagga" or routing == "frr":
+            config.set_value("routing_suite", routing)
+        else :
+            print ('routing suite not supported')
+            exit()
 
         # Verify no errors in xdp programs
         if os.system('make -C xdp/newip_router/') != 0:
             exit()
 
         # Verify no errors in qdisc
-        if os.system('cd lbf; ./install-module') != 0:  # TODO doesn't seem to work
-            exit()
-        if os.system('cd lbf; ./install-tc-support') != 0: 
-            exit()
+
+        if (buildLbf or subprocess.Popen('lsmod | grep "sch_lbf"', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0] == ""):
+            if os.system('cd lbf; ./install-module') != 0: 
+                exit()
+            if os.system('cd lbf; ./install-tc-support') != 0: 
+                exit()
         # Create nodes
 
         #h = host
