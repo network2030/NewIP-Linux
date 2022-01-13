@@ -24,6 +24,7 @@ struct lbf_params
 
 struct lbf_vars
 {
+	__u16 hops_left;
 };
 
 struct lbf_stats
@@ -301,36 +302,39 @@ static int lbf_enqueue(struct sk_buff *skb, struct Qdisc *sch,
 				
 				struct latency_based_forwarding *lbf = (struct latency_based_forwarding*)contract;
 				int ret = 0;
-				if (lbf->fib_tohops <= 0 || lbf->fib_todelay <= 0)
+				// if (lbf->fib_tohops <= 0 || lbf->fib_todelay <= 0)
+				if (lbf->fib_tohops <= 0)
 				{
-					printk("to hops and to_delay can not be zero, dropping the packet");
+					printk("to_hops can not be zero, dropping the packet");
 					ret = 1;
 					qdisc_qstats_drop(sch);
 					__qdisc_drop(skb, to_free);
 					return ret;
 				}
-				__u16 h_delay = 100;
 
+				__u16 h_delay = 0; //delay on this hop
 				// Updating experienced delay 
-				lbf->experienced_delay = htons(ntohs(lbf->experienced_delay) + h_delay);
+				lbf->experienced_delay = htons(ntohs(lbf->experienced_delay) + h_delay*10); // calculating in 10^-4s so converting h_delay (ms) to 10^-4s
 				lbf->fib_todelay = htons(ntohs(lbf->fib_todelay) - h_delay);
 
-				__u16 e_delay_new = ntohs(lbf->experienced_delay);
-				__u16 min_delay = ntohs (lbf->min_delay);
-				__u16 max_delay = ntohs (lbf->max_delay);
-				__u16 fib_todelay = ntohs (lbf->fib_todelay);
+				__u16 e_delay_new = ntohs(lbf->experienced_delay); // stored in 10 ^-4s
+				// calculating everthing in 10^ -4s
+				__u16 min_delay = ntohs (lbf->min_delay) * 10;
+				__u16 max_delay = ntohs (lbf->max_delay) * 10;
+				__u16 fib_todelay = ntohs (lbf->fib_todelay) * 10;
 				__u16 fib_tohops = ntohs (lbf->fib_tohops);
 				// we can remove e_delay_new as thats lbf->experienced_delay now
-				__u16 lqmin = lbf_get_min_delay(e_delay_new, min_delay, fib_todelay, fib_tohops);
+				__u16 lqmin = lbf_get_min_delay(e_delay_new, min_delay, fib_todelay, fib_tohops); // in 10^-4s
 				printk("in enqueue lqmin %d",lqmin);
-				__u16 lqmax = lbf_get_max_delay (e_delay_new, max_delay, fib_todelay, fib_tohops);
+				__u16 lqmax = lbf_get_max_delay (e_delay_new, max_delay, fib_todelay, fib_tohops); // in 10^-4s
 				printk("lqmax in enqueue %d",lqmax);
-				printk("min_delay %d,",min_delay);
-				printk("e_delay_new %d,",ntohs(lbf->experienced_delay));
-				printk("fib_todelay %d,",fib_todelay);
-				printk("fib_tohops %d,",fib_tohops);
+				printk("min_delay %d",min_delay);
+				printk("e_delay_new %d",ntohs(lbf->experienced_delay));
+				printk("fib_todelay %d",fib_todelay);
+				printk("fib_tohops %d",fib_tohops);
 
 				lbf->fib_tohops = lbf->fib_tohops - htons(1);
+				q->vars.hops_left = lbf->fib_tohops;
 				int badpkt = 0;
 				__u16 lqbudget = LQB_BESTEFFORT; 
 				__u64 tmin_nsec, tmax_nsec;
@@ -351,8 +355,8 @@ static int lbf_enqueue(struct sk_buff *skb, struct Qdisc *sch,
 
 				__u64 curr_time = PSCHED_TICKS2NS(psched_get_time());
 
-				tmin_nsec = curr_time + (__u64)lqmin * NSEC_PER_MSEC;
-				tmax_nsec = curr_time + (__u64)lqmax * NSEC_PER_MSEC;
+				tmin_nsec = curr_time + (__u64)lqmin * NSEC_PER_USEC * 100;
+				tmax_nsec = curr_time + (__u64)lqmax * NSEC_PER_USEC * 100;
 
 				/* 
 				* tmax_nsec, tmin_nsec:
@@ -437,13 +441,13 @@ static inline struct lbf_pnode* search_next_pnode(struct lbf_sched_data *q)
 
 			while (curr_pnode)
 			{	
-				if (curr_pnode->tmax_nsec < curr_time)
+				if (curr_pnode->tmax_nsec < curr_time && q->vars.hops_left == 0)
 				{
 					{	// Packet expired
 						// Need to remove this node
 						// we'll remove the hnode too if its not the head so go back to previous hnode but only if its not head hnode
 						struct lbf_pnode* del_pnode = curr_pnode;
-						printk("delayed by in search next: %lld",curr_time-curr_pnode->tmax_nsec);
+						printk("delayed by in search next  in 10^-4s: %lld",(curr_time-curr_pnode->tmax_nsec)/(NSEC_PER_MSEC/10));
 						if (curr_pnode->next == NULL)
 						{
 							if (curr_hnode->prev_hnode != NULL)
@@ -496,11 +500,11 @@ static inline struct lbf_pnode* search_now_pnode(struct lbf_sched_data *q)
 			{	
 				if (curr_pnode->tmin_nsec <= curr_time)
 				{					
-					if (curr_pnode->tmax_nsec < curr_time)
+					if (curr_pnode->tmax_nsec < curr_time && q->vars.hops_left == 0)
 
 					{	// Packet expired
 						// Need to remove this node
-						printk("delayed by %lld",curr_time-curr_pnode->tmax_nsec);
+						printk("delayed by in 10^-4s: %lld",(curr_time-curr_pnode->tmax_nsec)/(NSEC_PER_MSEC/10));
 						struct lbf_pnode* del_pnode = curr_pnode;
 						if (curr_pnode->next == NULL)
 						{
@@ -519,7 +523,7 @@ static inline struct lbf_pnode* search_now_pnode(struct lbf_sched_data *q)
 					}
 					else 
 					{
-						printk("Left time %lld",(curr_pnode->tmax_nsec-curr_time)/1000000);
+						printk("Left time in 10^-4s %lld",(curr_pnode->tmax_nsec-curr_time)/(NSEC_PER_MSEC/10));
 						printk("found packet to be dequeued");
 						return curr_pnode;
 						// found packet to be dequeued
@@ -549,8 +553,11 @@ static struct sk_buff *lbf_dequeue(struct Qdisc *sch)
 
 	if (q->next_pnode != NULL)
 	{
-		printk("left time: %lld",(q->next_pnode->tmax_nsec-curr_time)/1000000);
-		if (q->next_pnode->tmax_nsec < curr_time)
+		if (q->next_pnode->tmax_nsec > curr_time)
+			printk("left timein 10^-4s: %lld",(q->next_pnode->tmax_nsec-curr_time)/(NSEC_PER_MSEC/10));
+		else
+			printk("late by in 10^-4s: %lld",(curr_time - q->next_pnode->tmax_nsec)/(NSEC_PER_MSEC/10));
+		if (q->next_pnode->tmax_nsec < curr_time && q->vars.hops_left == 0)
 		{
 			printk("packet expired, maybe watchdog is late");
 			q->next_pnode->realpkt = NULL;
@@ -588,15 +595,15 @@ static struct sk_buff *lbf_dequeue(struct Qdisc *sch)
 	}
 	if (skb != NULL)
 	{
-		q->stats.delay = PSCHED_TICKS2NS(psched_get_time() - lbf_get_enqueue_time(skb))/NSEC_PER_USEC;
-		printk("Time stayed in queue: %d",q->stats.delay/USEC_PER_MSEC);
+		q->stats.delay = PSCHED_TICKS2NS(psched_get_time() - lbf_get_enqueue_time(skb))/NSEC_PER_USEC; // in usec
+		printk("Time stayed in queue: %lld",q->stats.delay/100);   // in 10^-4s
 		struct newip_offset *newipoff = (struct newip_offset *)skb_network_header(skb);
 		if (newipoff->contract_offset != newipoff->payload_offset)
 		{
 			void *contract = skb_network_header(skb) + newipoff->contract_offset;
 			struct latency_based_forwarding *lbf = (struct latency_based_forwarding*)contract;
-			lbf->experienced_delay += htons (q->stats.delay/USEC_PER_MSEC);
-			printk ("updated experienced delay %d", ntohs(lbf->experienced_delay));
+			lbf->experienced_delay += htons (q->stats.delay/100); // in 10 ^-4s
+			printk ("updated experienced delay %lld", ntohs(lbf->experienced_delay));
 		}
 	}
 
