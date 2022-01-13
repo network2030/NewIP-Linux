@@ -217,6 +217,7 @@ int xdp_router_func(struct xdp_md *ctx)
 		action = XDP_DROP;
 		break;
 	case BPF_FIB_LKUP_RET_NOT_FWDED:	/* packet is not forwarded */
+		bpf_printk ("route not found, check if routing suite is working properly");
 	case BPF_FIB_LKUP_RET_FWD_DISABLED: /* fwding is not enabled on ingress */
 	case BPF_FIB_LKUP_RET_UNSUPP_LWT:	/* fwd requires encapsulation */
 	case BPF_FIB_LKUP_RET_NO_NEIGH:		/* no neighbor entry for nh */

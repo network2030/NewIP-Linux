@@ -25,21 +25,21 @@ import subprocess
 from receiver import receiver
 from sender import sender
 
-def tcpdump_proc (interface):
-    os.system ('timeout 10 tcpdump -i ' + interface.name + ' -w ' + interface.name +'.pcap')
+def tcpdump_proc (interface, timeout):
+    os.system (f'timeout {timeout} tcpdump -i ' + interface.name + ' -w ' + interface.name +'.pcap' + ' ether proto 0x88b6')
 
-def receiver_proc(node, iface):
+def receiver_proc(node, iface, timeout):
     receiver_obj = receiver(node)
-    receiver_obj.start(iface=iface)
+    receiver_obj.start(iface=iface, timeout=timeout)
 
-def setup_host(node, interfaces, pcap):
+def setup_host(node, interfaces, pcap, timeout):
     with node:
         for interface in interfaces:
             os.system(
                 './xdp/newip_router/xdp_loader --progsec xdp_pass --filename ./xdp/newip_router/xdp_prog_kern.o --dev ' + interface.name)
             os.system('tc qdisc replace dev ' + interface.name + ' root lbf')
             if pcap:
-                tcpdump_process = multiprocessing.Process (target = tcpdump_proc, args=(interface,))
+                tcpdump_process = multiprocessing.Process (target = tcpdump_proc, args=(interface,timeout,))
                 tcpdump_process.start ()
 
 # Create 'routing table' for 8bit address
@@ -73,7 +73,7 @@ static_redirect_8b = {
     },
 }
 
-def setup_router(node, interfaces, pcap):
+def setup_router(node, interfaces, pcap, timeout):
     route = ''
     for key, value in static_redirect_8b[node.name].items():
         route = route + str(key) + '_' + value + '-'
@@ -88,27 +88,30 @@ def setup_router(node, interfaces, pcap):
                     ' ingress bpf da obj ./xdp/newip_router/tc_prog_kern.o sec tc_router')
             os.system('tc qdisc replace dev ' + interface.name + ' root lbf')
             if pcap:
-                tcpdump_process = multiprocessing.Process (target = tcpdump_proc, args=(interface,))
+                tcpdump_process = multiprocessing.Process (target = tcpdump_proc, args=(interface,timeout,))
                 tcpdump_process.start ()
 
 class setup:
+    def __init__(self, timeout = 10):
+        self.timeout = timeout
+
     def start_receiver (self):
         with self.h2:
             receiver_process = multiprocessing.Process(
-                target=receiver_proc, args=(self.h2, self.h2_r2,))
+                target=receiver_proc, args=(self.h2, self.h2_r2, self.timeout,))
             receiver_process.start()
         with self.h3:
             receiver_process = multiprocessing.Process(
-                target=receiver_proc, args=(self.h3, self.h3_r3,))
+                target=receiver_proc, args=(self.h3, self.h3_r3, self.timeout,))
             receiver_process.start()
         # Ensure routers and receivers have started
         time.sleep(1)
 
 
-    def setup_topology(self, pcap = True, routing = "frr", buildLbf = False):
+    def setup_topology(self, pcap = True, routing = "quagga", buildLbf = False):
         config.set_value('assign_random_names', False)
         # config.set_value('delete_namespaces_on_termination', False)
-
+        # config.set_value("routing_logs", True)
         if routing == "quagga" or routing == "frr":
             config.set_value("routing_suite", routing)
         else :
@@ -120,8 +123,7 @@ class setup:
             exit()
 
         # Verify no errors in qdisc
-
-        if (buildLbf or subprocess.Popen('lsmod | grep "sch_lbf"', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0] == ""):
+        if (buildLbf or subprocess.Popen('lsmod | grep "sch_lbf"', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0] == b''):
             if os.system('cd lbf; ./install-module') != 0: 
                 exit()
             if os.system('cd lbf; ./install-tc-support') != 0: 
@@ -133,13 +135,9 @@ class setup:
         self.h2 = Node('h2')
         self.h3 = Node('h3')
         #r = router
-        self.r1 = Node('r1')
-        self.r2 = Node('r2')
-        self.r3 = Node('r3')
-
-        self.r1.enable_ip_forwarding()
-        self.r2.enable_ip_forwarding()
-        self.r3.enable_ip_forwarding()
+        self.r1 = Router('r1')
+        self.r2 = Router('r2')
+        self.r3 = Router('r3')
 
         # Create interfaces
         (self.r1_h1, self.h1_r1) = connect(self.r1, self.h1, interface1_name='r1_h1', interface2_name='h1_r1')
@@ -176,12 +174,12 @@ class setup:
 
         RoutingHelper(protocol='rip').populate_routing_tables()
 
-        setup_host(self.h1, [self.h1_r1], pcap)
-        setup_host(self.h2, [self.h2_r2], pcap)
-        setup_host(self.h3, [self.h3_r3], pcap)
-        setup_router(self.r1, [self.r1_h1, self.r1_r2, self.r1_r3], pcap)
-        setup_router(self.r2, [self.r2_h2, self.r2_r1], pcap)
-        setup_router(self.r3, [self.r3_h3, self.r3_r1], pcap)
+        setup_host(self.h1, [self.h1_r1], pcap, self.timeout)
+        setup_host(self.h2, [self.h2_r2], pcap, self.timeout)
+        setup_host(self.h3, [self.h3_r3], pcap, self.timeout)
+        setup_router(self.r1, [self.r1_h1, self.r1_r2, self.r1_r3], pcap, self.timeout)
+        setup_router(self.r2, [self.r2_h2, self.r2_r1], pcap, self.timeout)
+        setup_router(self.r3, [self.r3_h3, self.r3_r1], pcap, self.timeout)
 
     def show_stats (self):
         with self.h1:
