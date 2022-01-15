@@ -36,7 +36,7 @@ def setup_host(node, interfaces, pcap, timeout):
     with node:
         for interface in interfaces:
             os.system(
-                './xdp/newip_router/xdp_loader --progsec xdp_pass --filename ./xdp/newip_router/xdp_prog_kern.o --dev ' + interface.name)
+                './xdp/newip_router/xdp_loader  --quiet --progsec xdp_pass --filename ./xdp/newip_router/xdp_prog_kern.o --dev ' + interface.name)
             os.system('tc qdisc replace dev ' + interface.name + ' root lbf')
             if pcap:
                 tcpdump_process = multiprocessing.Process (target = tcpdump_proc, args=(interface,timeout,))
@@ -80,8 +80,8 @@ def setup_router(node, interfaces, pcap, timeout):
     with node:
         for interface in interfaces:
             os.system(
-                './xdp/newip_router/xdp_loader --progsec xdp_router --filename ./xdp/newip_router/xdp_prog_kern.o --dev ' + interface.name)
-            os.system('sudo ./xdp/newip_router/xdp_prog_user --filename ' +
+                './xdp/newip_router/xdp_loader --quiet --progsec xdp_router --filename ./xdp/newip_router/xdp_prog_kern.o --dev ' + interface.name)
+            os.system('sudo ./xdp/newip_router/xdp_prog_user --quiet --filename ' +
                     route + ' -d ' + interface.name)
             os.system('tc qdisc add dev ' + interface.name + ' ingress')
             os.system('tc filter add dev ' + interface.name +
