@@ -15,7 +15,7 @@ with setup_obj.h1:
     # After passing through the qdisc, parameters will get changed 
     # To avoid changing the parameters we dont use LBF qdisc for generating the packets
     os.system ('tc qdisc replace dev h1_r1 root pfifo') 
-    for i in range(0,60,6):
+    for i in range(0,90,9):
         
         sender_obj.make_packet(src_addr_type='ipv4', src_addr='10.0.1.2',
                             dst_addr_type='ipv6', dst_addr='10::2:2', content=f'5--6 number: {i}')

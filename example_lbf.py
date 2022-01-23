@@ -3,7 +3,7 @@
 from setup import setup
 from sender import sender
 
-setup_obj = setup()
+setup_obj = setup(timeout=2)
 setup_obj.setup_topology (pcap=False, buildLbf=False)
 setup_obj.start_receiver ()
 
@@ -17,4 +17,4 @@ with setup_obj.h1:
         contract_type='latency_based_forwarding', params=[500,800,300,3])   #min_delay, max_delay, fib_todelay, fib_tohops
     sender_obj.send_packet(iface='h1_r1', show_pkt=True)
 
-setup_obj.show_stats()
+# setup_obj.show_stats()

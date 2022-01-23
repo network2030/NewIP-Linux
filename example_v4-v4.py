@@ -3,7 +3,7 @@ from sender import sender
 import os
 
 setup_obj = setup(timeout=2)
-setup_obj.setup_topology (pcap=True,routing='quagga')
+setup_obj.setup_topology (pcap=False)
 setup_obj.start_receiver ()
 
 with setup_obj.h1:
@@ -16,4 +16,4 @@ with setup_obj.h1:
                         dst_addr_type='ipv4', dst_addr='10.0.2.2', content='ipv4 to ipv4 from h1 to h2')
     sender_obj.send_packet(iface='h1_r1', show_pkt=True)
 
-setup_obj.show_stats()
+# setup_obj.show_stats()
