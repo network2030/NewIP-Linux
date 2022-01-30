@@ -2,11 +2,13 @@ from nest.experiment import *
 from nest.topology import *
 from nest.routing.routing_helper import RoutingHelper
 import nest.config as config
+from numpy import empty
 
 from scapy.all import *
 
 import multiprocessing
 import os
+import shutil
 import subprocess
 
 # TOPOLOGY
@@ -26,21 +28,18 @@ from receiver import receiver
 from sender import sender
 
 def tcpdump_proc (interface, timeout):
-    os.system (f'timeout {timeout} tcpdump -i ' + interface.name + ' -w ' + interface.name +'.pcap' + ' ether proto 0x88b6')
+    os.system (f'timeout {timeout} tcpdump -i ' + interface.name + ' -w pcap/' + interface.name +'.pcap' + ' ether proto 0x88b6' +' >>  pcap/tcpdump_logs.txt 2>&1')
 
-def receiver_proc(node, iface, timeout):
-    receiver_obj = receiver(node)
+def receiver_proc(node, iface, timeout, verbose = True):
+    receiver_obj = receiver(node, verbose)
     receiver_obj.start(iface=iface, timeout=timeout)
 
-def setup_host(node, interfaces, pcap, timeout):
+def setup_host(node, interfaces):
     with node:
         for interface in interfaces:
             os.system(
                 './xdp/newip_router/xdp_loader  --quiet --progsec xdp_pass --filename ./xdp/newip_router/xdp_prog_kern.o --dev ' + interface.name)
             os.system('tc qdisc replace dev ' + interface.name + ' root lbf')
-            if pcap:
-                tcpdump_process = multiprocessing.Process (target = tcpdump_proc, args=(interface,timeout,))
-                tcpdump_process.start ()
 
 # Create 'routing table' for 8bit address
 static_redirect_8b = {
@@ -73,7 +72,7 @@ static_redirect_8b = {
     },
 }
 
-def setup_router(node, interfaces, pcap, timeout):
+def setup_router(node, interfaces):
     route = ''
     for key, value in static_redirect_8b[node.name].items():
         route = route + str(key) + '_' + value + '-'
@@ -87,30 +86,47 @@ def setup_router(node, interfaces, pcap, timeout):
             os.system('tc filter add dev ' + interface.name +
                     ' ingress bpf da obj ./xdp/newip_router/tc_prog_kern.o sec tc_router')
             os.system('tc qdisc replace dev ' + interface.name + ' root lbf')
-            if pcap:
-                tcpdump_process = multiprocessing.Process (target = tcpdump_proc, args=(interface,timeout,))
-                tcpdump_process.start ()
 
 class setup:
-    def __init__(self, timeout = 10):
-        self.timeout = timeout
+    def __init__(self):
+        pass
 
-    def start_receiver (self):
-        with self.h2:
-            receiver_process = multiprocessing.Process(
-                target=receiver_proc, args=(self.h2, self.h2_r2, self.timeout,))
-            receiver_process.start()
-        with self.h3:
-            receiver_process = multiprocessing.Process(
-                target=receiver_proc, args=(self.h3, self.h3_r3, self.timeout,))
-            receiver_process.start()
+    def start_receiver (self, timeout = 5, verbose = True, nodeList=[]):
+        if not nodeList:
+            nodeList = self.hostNodes
+        for node in nodeList:
+            for interface in node._interfaces:
+                with node:
+                    receiver_process = multiprocessing.Process(
+                        target=receiver_proc, args=(node, interface, timeout, verbose,))
+                    receiver_process.start()
+
         # Ensure routers and receivers have started
         time.sleep(1)
+    
+    def generate_pcap (self, interfaces=[], timeout = 5, nodelist = []):
+        current_directory = os.getcwd()
+        final_directory = os.path.join(current_directory, r'pcap')
+        if os.path.exists(final_directory):
+            shutil.rmtree(final_directory)
+        os.makedirs(final_directory, mode=0o777)
+        if interfaces:
+            nodelist = []
+        nodes = self.nodes
+        if nodelist:
+            nodes = nodelist
+        for node in nodes:
+            with node:
+                for interface in node._interfaces:
+                    if((interface.name in interfaces) or not interfaces):
+                        tcpdump_process = multiprocessing.Process (target = tcpdump_proc, args=(interface,timeout,))
+                        tcpdump_process.start ()
 
 
-    def setup_topology(self, pcap = True, routing = "quagga", buildLbf = False):
+
+    def setup_topology(self, routing = "quagga", buildLbf = False):
         config.set_value('assign_random_names', False)
-        # config.set_value('delete_namespaces_on_termination', False)
+        config.set_value('delete_namespaces_on_termination', False)
         # config.set_value("routing_logs", True)
         if routing == "quagga" or routing == "frr":
             config.set_value("routing_suite", routing)
@@ -138,6 +154,9 @@ class setup:
         self.r1 = Router('r1')
         self.r2 = Router('r2')
         self.r3 = Router('r3')
+        self.nodes = [self.h1, self.h2, self.h3, self.r1, self.r2, self.r3]
+        self.hostNodes = [self.h1, self.h2, self.h3]
+        self.routerNodes = [self.r1, self.r2, self.r3]
 
         # Create interfaces
         (self.r1_h1, self.h1_r1) = connect(self.r1, self.h1, interface1_name='r1_h1', interface2_name='h1_r1')
@@ -174,12 +193,52 @@ class setup:
 
         RoutingHelper(protocol='rip').populate_routing_tables()
 
-        setup_host(self.h1, [self.h1_r1], pcap, self.timeout)
-        setup_host(self.h2, [self.h2_r2], pcap, self.timeout)
-        setup_host(self.h3, [self.h3_r3], pcap, self.timeout)
-        setup_router(self.r1, [self.r1_h1, self.r1_r2, self.r1_r3], pcap, self.timeout)
-        setup_router(self.r2, [self.r2_h2, self.r2_r1], pcap, self.timeout)
-        setup_router(self.r3, [self.r3_h3, self.r3_r1], pcap, self.timeout)
+        setup_host(self.h1, [self.h1_r1])
+        setup_host(self.h2, [self.h2_r2])
+        setup_host(self.h3, [self.h3_r3])
+        setup_router(self.r1, [self.r1_h1, self.r1_r2, self.r1_r3])
+        setup_router(self.r2, [self.r2_h2, self.r2_r1])
+        setup_router(self.r3, [self.r3_h3, self.r3_r1])
+
+        # TODO automate building this dict
+        self.info_dict = {
+            'h1':
+            {
+                'ipv4': '10.0.1.2',
+                'ipv6': '10::1:2',
+                '8bit': '1',
+                'hops': {
+                    'h1': 0,
+                    'h2': 3,
+                    'h3': 3
+                },
+                'node': self.h1
+            },
+            'h2':
+            {
+                'ipv4': '10.0.2.2',
+                'ipv6': '10::2:2',
+                '8bit': '2',
+                'hops': {
+                    'h1': 3,
+                    'h2': 0,
+                    'h3': 4
+                },
+                'node': self.h2
+            },
+            'h3':
+            {
+                'ipv4': '10.0.1.2',
+                'ipv6': '10::1:2',
+                '8bit': '1',
+                'hops': {
+                    'h1': 3,
+                    'h2': 4,
+                    'h3': 0
+                },
+                'node': self.h3
+            }
+        }
 
     def show_stats (self):
         with self.h1:

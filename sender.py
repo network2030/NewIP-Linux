@@ -43,7 +43,7 @@ class sender:
                 self.contracts = self.contracts / \
                 LatencyBasedForwarding(min_delay=params[0], max_delay = params[1], fib_todelay = params[2], fib_tohops = params[3])
 
-    def send_packet(self, iface, show_pkt=False):
+    def send_packet(self, iface, show_pkt=False, count=1):
         self.offset = NewIPOffset()
         self.eth = Ether()
         # Create packet
@@ -75,7 +75,7 @@ class sender:
 
         if show_pkt:
             self.show_packet()
-        sendp(self.pkt, iface=iface, verbose=False)
+        sendp(self.pkt, iface=iface, verbose=False, count=count)
         self.contracts = None
         # self.pktdump.write(self.pkt)
 

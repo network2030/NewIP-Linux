@@ -554,7 +554,7 @@ static struct sk_buff *lbf_dequeue(struct Qdisc *sch)
 	if (q->next_pnode != NULL)
 	{
 		if (q->next_pnode->tmax_nsec > curr_time)
-			// printk("left time in 10^-4s: %lld",(q->next_pnode->tmax_nsec-curr_time)/(NSEC_PER_MSEC/10));
+			printk("left time in 10^-4s: %lld",(q->next_pnode->tmax_nsec-curr_time)/(NSEC_PER_MSEC/10));
 		else
 			printk("late by in 10^-4s: %lld",(curr_time - q->next_pnode->tmax_nsec)/(NSEC_PER_MSEC/10));
 		if (q->next_pnode->tmax_nsec < curr_time && q->vars.hops_left == 0)
@@ -611,6 +611,7 @@ static struct sk_buff *lbf_dequeue(struct Qdisc *sch)
 	if (likely(skb != NULL)) 
 	{
 		skb->next = NULL;
+		printk("sent")
 		return skb;
 	}
 
