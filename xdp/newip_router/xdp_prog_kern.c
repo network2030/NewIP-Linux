@@ -19,7 +19,7 @@
 #define AF_INET 1
 #endif
 
-#ifndef AF_INET
+#ifndef AF_INET6
 #define AF_INET6 6
 #endif
 
