@@ -33,10 +33,10 @@ class lbf_forwarder:
 
         self.srcNode = self.netObj.info_dict[self.src]['node']
         self.dstNode = self.netObj.info_dict[self.dst]['node']
-
+        self.srcIf = self.srcNode._interfaces[0].name
         recVerbose = True
         if (self.useTcpReplay):
-            self.netObj.generate_pcap (timeout=self.timeout, nodelist=[self.dstNode])
+            self.netObj.generate_pcap (timeout=self.timeout, nodelist=[self.srcNode])
             recVerbose = False
         elif (self.pcapAll):
             self.netObj.generate_pcap(timeout=self.timeout)
@@ -80,6 +80,9 @@ class lbf_forwarder:
         self.parser.add_argument("--timeout",     "-t",   type=int,
                             default = 5,
                             help="timeout for receiver and pcap capture")
+        self.parser.add_argument("--show-packet",     "-sp",   type=boolean,
+                            default = False,
+                            help="Show Packet")
         self.parser.add_argument("--pkt-count",    "-c",   type=int,
                             default=1,
                             help="number of pkts to send")
@@ -134,6 +137,7 @@ class lbf_forwarder:
         self.src = args.src
         self.dst = args.dst
         self.timeout = args.timeout
+        self.showPacket = args.show_packet
         self.pktCount = args.pkt_count
         self.pktSize = args.pkt_size
 
@@ -182,8 +186,8 @@ class lbf_forwarder:
 
     def create_lbf_pkt (self):
 
-        # content = self.pkt_fill()
-        content = "not using pkt fill"
+        content = self.pkt_fill()
+        # content = "not using pkt fill"
         self.sender.make_packet(self.src_addr_type, self.src_addr,
                                self.dst_addr_type, self.dst_addr, content)
 
@@ -194,25 +198,21 @@ class lbf_forwarder:
     def start_forwarder (self):
         # if_, src_addr_type, dst_addr_type, src, dst = parse_args()   # parsing in init
         # pkt_fill(self.count, self.size):      // TODO check this
-        # self.src_addr = self.netObj.info_dict[self.src][self.src_addr_type]
-        # self.dst_addr = self.netObj.info_dict[self.dst][self.dst_addr_type]
-        # self.sender = sender ()
-        # self.create_lbf_pkt () 
-        # with self.srcNode:
-        #     self.sender.send_packet(iface=self.srcNode._interfaces[0].name, show_pkt=True)
-        with self.netObj.h1:
-            sender_obj = sender()
-            
-            sender_obj.make_packet(src_addr_type='ipv4', src_addr='10.0.1.2',
-                                dst_addr_type='ipv6', dst_addr='10::2:2', content='ipv4 to ipv6 from h1 to h2 more latency')
-            sender_obj.insert_contract(
-                contract_type='latency_based_forwarding', params=[500,800,300,3])   #min_delay, max_delay, fib_todelay, fib_tohops
-            sender_obj.send_packet(iface='h1_r1')
-    
+        self.src_addr = self.netObj.info_dict[self.src][self.src_addr_type]
+        self.dst_addr = self.netObj.info_dict[self.dst][self.dst_addr_type]
+        self.sender = sender ()
+        self.create_lbf_pkt () 
+        with self.srcNode:
+            if self.useTcpReplay:
+                os.system (f'tc qdisc replace dev {self.srcIf} root pfifo')
+            self.sender.send_packet(iface=self.srcIf, show_pkt=self.showPacket)
+
     def replay (self):
-        print("inside replay")
+        print("waiting for receiver processes to end...")
         time.sleep(self.timeout)
-        os.system (f'cp pcap/{self.dstNode._interfaces[0].name}.pcap pcap/replay.pcap')
+        os.system (f'cp pcap/{self.srcIf}.pcap pcap/replay.pcap')
+        with self.srcNode:
+            os.system (f'tc qdisc replace dev {self.srcIf} root lbf') 
         self.netObj.start_receiver (timeout=self.timeout, nodeList=[self.dstNode])
 
         if (self.pcapAll):
@@ -227,13 +227,13 @@ class lbf_forwarder:
         replayFile  = 'pcap/replay.pcap'
 
         with self.srcNode:
-            os.system(f'sudo tcpreplay -i {self.srcNode._interfaces[0].name} {replayFile} ')
-            # if (self.trTopspeed):
-            #     os.system(f'sudo tcpreplay --loop={self.trLoop} --stats={self.trStats} --topspeed -i {self.srcNode._interfaces[0].name} {replayFile} ')
-            # elif (self.trMbps):
-            #     os.system(f'sudo tcpreplay --loop={self.trLoop} --stats={self.trStats} --Mbps={self.trMbps} -i {self.srcNode._interfaces[0].name} {replayFile} ')
-            # else:
-            #     os.system(f'sudo tcpreplay --loop={self.trLoop} --stats={self.trStats} --pps={self.trPps} -i {self.srcNode._interfaces[0].name} {replayFile} ')
+            # os.system(f'sudo timeout {self.timeout} tcpreplay -i {self.srcIf} {replayFile} ')
+            if (self.trTopspeed):
+                os.system(f'sudo timeout {self.timeout} tcpreplay --loop={self.trLoop} --stats={self.trStats} --topspeed -i {self.srcIf} {replayFile} ')
+            elif (self.trMbps):
+                os.system(f'sudo timeout {self.timeout} tcpreplay --loop={self.trLoop} --stats={self.trStats} --Mbps={self.trMbps} -i {self.srcIf} {replayFile} ')
+            else:
+                os.system(f'sudo timeout {self.timeout} tcpreplay --loop={self.trLoop} --stats={self.trStats} --pps={self.trPps} -i {self.srcIf} {replayFile} ')
 
         
 

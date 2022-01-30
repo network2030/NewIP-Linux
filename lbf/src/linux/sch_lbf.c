@@ -611,7 +611,6 @@ static struct sk_buff *lbf_dequeue(struct Qdisc *sch)
 	if (likely(skb != NULL)) 
 	{
 		skb->next = NULL;
-		printk("sent")
 		return skb;
 	}
 

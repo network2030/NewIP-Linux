@@ -126,7 +126,7 @@ class setup:
 
     def setup_topology(self, routing = "quagga", buildLbf = False):
         config.set_value('assign_random_names', False)
-        config.set_value('delete_namespaces_on_termination', False)
+        # config.set_value('delete_namespaces_on_termination', False)
         # config.set_value("routing_logs", True)
         if routing == "quagga" or routing == "frr":
             config.set_value("routing_suite", routing)

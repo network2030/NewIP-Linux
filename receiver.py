@@ -7,9 +7,10 @@ class receiver:
 
     @staticmethod
     def process_pkt(self, pkt):
+        pass
         # print('Received Payload at ' + self.node.name + ' :')
-        if (self.verbose):
-            print(pkt[Raw].load)
+        # if (self.verbose):
+        #     print(pkt[Raw].load)
 
     def __init__(self, node, verbose = True):
         self.verbose = verbose
