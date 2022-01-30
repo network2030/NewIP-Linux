@@ -15,6 +15,15 @@
 #include "newip.h"
 #include <stdio.h>
 
+#ifndef AF_INET
+#define AF_INET 1
+#endif
+
+#ifndef AF_INET6
+#define AF_INET6 6
+#endif
+
+
 #ifndef memcpy
 #define memcpy(dest, src, n) __builtin_memcpy((dest), (src), (n))
 #endif
