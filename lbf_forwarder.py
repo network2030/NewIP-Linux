@@ -41,7 +41,6 @@ class lbf_forwarder:
         elif (self.pcapAll):
             self.netObj.generate_pcap(timeout=self.timeout)
         elif (self.pcapDst):
-            print("here")
             self.netObj.generate_pcap (timeout=self.timeout, nodelist=[self.dstNode])
         elif (self.pcapInterfaceList):
             self.netObj.generate_pcap (timeout=self.timeout, interfaces=self.pcapInterfaceList)
