@@ -61,7 +61,7 @@ class lbf_forwarder:
         # self.parser.add_argument("--interface", "-i", required=True,
         #                     help="set source address type")               Not required as we are specifying the src host and we only have 1 interface
         self.parser.add_argument("--src-type", "-st",
-                            choices={'8b','ipv4', 'ipv6'},
+                            choices={'8bit','ipv4', 'ipv6'},
                             default='ipv4',
                             help="set source address type")
         self.parser.add_argument("--src",      "-sa",
@@ -69,7 +69,7 @@ class lbf_forwarder:
                             default='h1',
                             help="set source host")
         self.parser.add_argument("--dst-type", "-dt",
-                            choices={'8b','ipv4', 'ipv6'},
+                            choices={'8bit','ipv4', 'ipv6'},
                             default='ipv4',
                             help="set dst address type")
         self.parser.add_argument("--dst",      "-da",

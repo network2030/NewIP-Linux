@@ -2,13 +2,12 @@ from setup import setup
 from sender import sender
 import os
 
-setup_obj = setup(timeout=2)
-setup_obj.setup_topology (pcap=False)
+setup_obj = setup()
+setup_obj.setup_topology ()
 setup_obj.start_receiver ()
 
 with setup_obj.h1:
     sender_obj = sender()
-    # os.system ("ping 10.0.2.2")
     delay = 500
     
     # IPv4 to IPv6

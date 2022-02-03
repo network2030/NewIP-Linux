@@ -3,7 +3,7 @@ from setup import setup
 from sender import sender
 
 setup_obj = setup()
-setup_obj.setup_topology (pcap=False)
+setup_obj.setup_topology ()
 setup_obj.start_receiver ()
 
 with setup_obj.h1:
