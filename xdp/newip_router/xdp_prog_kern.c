@@ -28,12 +28,20 @@
 #define memcpy(dest, src, n) __builtin_memcpy((dest), (src), (n))
 #endif
 
-struct bpf_map_def SEC("maps") static_redirect_8b = {
-	.type = BPF_MAP_TYPE_HASH,
-	.key_size = sizeof(__u8),
-	.value_size = sizeof(__u32),
-	.max_entries = 256,
-};
+// struct bpf_map_def SEC("maps") static_redirect_8b = {
+// 	.type = BPF_MAP_TYPE_HASH,
+// 	.key_size = sizeof(__u8),
+// 	.value_size = sizeof(__u32),
+// 	.max_entries = 256,
+// };
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__uint(max_entries, 256);
+	__type(key, __u8);
+	__type(value, __u32);
+	__uint(pinning, 0);
+} static_redirect_8b SEC(".maps");
 
 #define IPV6_FLOWINFO_MASK bpf_htonl(0x0FFFFFFF)
 
