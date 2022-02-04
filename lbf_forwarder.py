@@ -9,27 +9,32 @@ from setup import setup
 from sender import sender
 
 class lbfObj:
-    #define init function to initialize main variables:
     def __init__(self, min_delay, max_delay, hops):
         #define main variables you want to store and use
-        # 'c_' means 100s of milli seconds                      // users only get the access to define in milliseconds, its just that we process in 10^-1 milliseconds
-        self.c_min_delay = min_delay
-        self.c_max_delay = max_delay
-        self.hops      = hops
+        self.c_min_delay = int(min_delay)
+        self.c_max_delay = int(max_delay)
+        self.hops      = int(hops)
         self.fib_delay = 0
+
     def get(self):
         return [self.c_min_delay, self.c_max_delay, 0, self.hops]
 
+    def set(self, min_delay, max_delay, hops):
+        self.c_min_delay = int(min_delay)
+        self.c_max_delay = int(max_delay)
+        self.hops      = int(hops)
+
 class lbf_forwarder:
     #define start of forwarder. the interval and pkt count.
-    def __init__(self, min_delay = 50, max_delay = 60):            # min_delay = 50ms, max_delay = 60ms
+    def __init__(self, min_delay = 50, max_delay = 60):
+        self.min_delay = min_delay
+        self.max_delay = max_delay
         self.set_args()
         self.parse_args()
         self.netObj = setup()
         self.netObj.setup_topology ()
         # set LBF. Hops are specific to topology. user dont set it
-        hops = self.netObj.info_dict[self.src]['hops'][self.dst]
-        self.lbfObj = lbfObj(min_delay, max_delay, hops)
+        self.hops = self.netObj.info_dict[self.src]['hops'][self.dst]
 
         self.srcNode = self.netObj.info_dict[self.src]['node']
         self.dstNode = self.netObj.info_dict[self.dst]['node']
@@ -76,10 +81,12 @@ class lbf_forwarder:
                             choices={'h1','h2', 'h3'},
                             default='h2',
                             help="set destination host")
+        self.parser.add_argument("--lbf-contract",    "-lbf",   action='store', nargs="*",
+                            help="Use lbf contract with min and max delay. usage -lbf min_delay max_delay")
         self.parser.add_argument("--timeout",     "-t",   type=int,
                             default = 5,
                             help="timeout for receiver and pcap capture")
-        self.parser.add_argument("--show-packet",     "-sp",   type=boolean,
+        self.parser.add_argument("--show-packet",     "-sp", action='store_true',
                             default = False,
                             help="Show Packet")
         self.parser.add_argument("--pkt-count",    "-c",   type=int,
@@ -89,10 +96,10 @@ class lbf_forwarder:
                             default = 100,
                             help="pkt size")
         
-        self.parser.add_argument("--pcap-all",    "-pa",   type=boolean,
+        self.parser.add_argument("--pcap-all",    "-pa",   action='store_true',
                             default=False,
                             help="Capture pcap for all nodes")
-        self.parser.add_argument("--pcap-dst",    "-pd",   type=boolean,
+        self.parser.add_argument("--pcap-dst",    "-pd",   action='store_true',
                             default=False,
                             help="Capture pcap for dst node")
         self.parser.add_argument("--pcap-interface-list",    "-pil",   action='append',
@@ -102,7 +109,7 @@ class lbf_forwarder:
                             default=None,
                             help="Capture packets on this list of nodes")
         
-        self.parser.add_argument("--tcp-replay",    "-tr",   type=boolean,
+        self.parser.add_argument("--tcp-replay",    "-tr",   action='store_true',
                             default=False,
                             help="Use tcp-replay to send the packets")
         # self.parser.add_argument("--limit",    "-lmt",   type=int,
@@ -119,7 +126,7 @@ class lbf_forwarder:
         self.group.add_argument("--Mbps",    "-mbps",   type=int,
                             default=0,
                             help="send at the specified rate in Mbps, use with --tcp-replay=true")
-        self.group.add_argument("--topspeed",    "-ts",   type=boolean,
+        self.group.add_argument("--topspeed",    "-ts",   action='store_true',
                             default=False,
                             help="send at the maximum rate, use with --tcp-replay=true")
             
@@ -135,6 +142,9 @@ class lbf_forwarder:
         self.dst_addr_type = args.dst_type
         self.src = args.src
         self.dst = args.dst
+        if args.lbf_contract is not None and len(args.lbf_contract) not in (0, 2):
+            self.parser.error('Either give no values for contract, or two, not {}.'.format(len(args.lbf_contract)))
+        self.lbfList = args.lbf_contract
         self.timeout = args.timeout
         self.showPacket = args.show_packet
         self.pktCount = args.pkt_count
@@ -153,14 +163,8 @@ class lbf_forwarder:
         self.trTopspeed = args.topspeed
         self.trStats = args.statistics
         
-
-        # TODO: resolve address from host name   Wont have addresses before topology creation
-        # src_addr = args.src.getAddress(src_addr_type)
-        # dst_addr = args.dst.getAddress(dst_addr_type)
         self.size = args.pkt_size
         self.count = args.pkt_count
-
-        # now ge
 
         #print("Set src-type to %s" % args.src_type)
         #print("Set dst-type to %s" % args.dst_type)
@@ -170,10 +174,7 @@ class lbf_forwarder:
         #print("Set cnt to %d" % args.pkt_count)
 
         # TODO: rename setup_obj to active_topo
-        # verify tx_name exist in setup_obj - rename setup_obj to active_topo
-        # verify type and addr are valid
-        #TODO: I dont know how to create sender object from tx_name
-
+        
     # do it once. calling random over and over is waste of time.
     def pkt_fill(self):
         START = 'pkt# %d ' % (self.pktCount)
@@ -186,16 +187,19 @@ class lbf_forwarder:
     def create_lbf_pkt (self):
 
         content = self.pkt_fill()
-        # content = "not using pkt fill"
         self.sender.make_packet(self.src_addr_type, self.src_addr,
                                self.dst_addr_type, self.dst_addr, content)
+        if (self.lbfList != None):
+            self.lbfObj = lbfObj(self.min_delay, self.max_delay, self.hops)
 
-        params = self.lbfObj.get()
-        self.sender.insert_contract('latency_based_forwarding', params)
+            if (self.lbfList != []):
+                self.lbfObj.set (self.lbfList[0], self.lbfList[1], self.hops)
+
+            params = self.lbfObj.get()
+            self.sender.insert_contract('latency_based_forwarding', params)
  
 
     def start_forwarder (self):
-        # if_, src_addr_type, dst_addr_type, src, dst = parse_args()   # parsing in init
         # pkt_fill(self.count, self.size):      // TODO check this
         self.src_addr = self.netObj.info_dict[self.src][self.src_addr_type]
         self.dst_addr = self.netObj.info_dict[self.dst][self.dst_addr_type]
@@ -226,17 +230,12 @@ class lbf_forwarder:
         replayFile  = 'pcap/replay.pcap'
 
         with self.srcNode:
-            # os.system(f'sudo timeout {self.timeout} tcpreplay -i {self.srcIf} {replayFile} ')
             if (self.trTopspeed):
                 os.system(f'sudo timeout {self.timeout} tcpreplay --loop={self.trLoop} --stats={self.trStats} --topspeed -i {self.srcIf} {replayFile} ')
             elif (self.trMbps):
                 os.system(f'sudo timeout {self.timeout} tcpreplay --loop={self.trLoop} --stats={self.trStats} --Mbps={self.trMbps} -i {self.srcIf} {replayFile} ')
             else:
                 os.system(f'sudo timeout {self.timeout} tcpreplay --loop={self.trLoop} --stats={self.trStats} --pps={self.trPps} -i {self.srcIf} {replayFile} ')
-
-        
-
-        
 
 
 lbf_forwarder_obj = lbf_forwarder()
