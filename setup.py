@@ -2,13 +2,11 @@ from nest.experiment import *
 from nest.topology import *
 from nest.routing.routing_helper import RoutingHelper
 import nest.config as config
-from numpy import empty
 
 from scapy.all import *
 
 import multiprocessing
 import os
-import shutil
 import subprocess
 
 # TOPOLOGY
@@ -27,8 +25,9 @@ import subprocess
 from receiver import receiver
 from sender import sender
 
-def tcpdump_proc (interface, timeout):
-    os.system (f'timeout {timeout} tcpdump -i ' + interface.name + ' -w pcap/' + interface.name +'.pcap' + ' ether proto 0x88b6' +' >>  pcap/tcpdump_logs.txt 2>&1')
+def tcpdump_proc (interface, timeout, dirName):
+    os.system (f'timeout {timeout} tcpdump -i ' + interface.name + f' -w {dirName}/' + interface.name +'.pcap' + ' ether proto 0x88b6' + f' >>  {dirName}/tcpdump_logs.txt 2>&1')
+    # os.system (f'timeout {timeout} tcpdump -i ' + interface.name + f' -w abcd/' + interface.name +'.pcap' + ' ether proto 0x88b6' + f' >>  abcd/tcpdump_logs.txt 2>&1')
 
 def receiver_proc(node, iface, timeout, verbose = True):
     receiver_obj = receiver(node, verbose)
@@ -104,12 +103,11 @@ class setup:
         # Ensure routers and receivers have started
         time.sleep(1)
     
-    def generate_pcap (self, interfaces=[], timeout = 5, nodelist = []):
-        current_directory = os.getcwd()
-        final_directory = os.path.join(current_directory, r'pcap')
-        if os.path.exists(final_directory):
-            shutil.rmtree(final_directory)
-        os.makedirs(final_directory, mode=0o777)
+    def generate_pcap (self, interfaces=[], timeout = 5, nodelist = [],dir_name = "pcap"):
+        current_directory = os.getcwd()       
+        final_directory = os.path.join(current_directory, dir_name)
+        if os.path.exists(final_directory) == False:
+            os.makedirs(final_directory, mode=0o777)
         if interfaces:
             nodelist = []
         nodes = self.nodes
@@ -119,7 +117,7 @@ class setup:
             with node:
                 for interface in node._interfaces:
                     if((interface.name in interfaces) or not interfaces):
-                        tcpdump_process = multiprocessing.Process (target = tcpdump_proc, args=(interface,timeout,))
+                        tcpdump_process = multiprocessing.Process (target = tcpdump_proc, args=(interface,timeout,dir_name))
                         tcpdump_process.start ()
 
 

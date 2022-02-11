@@ -1,12 +1,14 @@
 __pycache__/
 .vscode/settings.json
-
 *.o
 *.ll
 *.pcap
+*.json
+*.txt
 xdp/basic-solutions/xdp_stats
 xdp/basic-solutions/xdp_loader
 xdp/newip_router/xdp_stats
 xdp/newip_router/xdp_loader
 xdp/newip_router/xdp_prog_user
 pcap/
+202*/
