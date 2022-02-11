@@ -181,17 +181,15 @@ class lbf_forwarder:
         # TODO: rename setup_obj to active_topo
         
     # do it once. calling random over and over is waste of time.
-    def pkt_fill(self):
-        START = 'pkt# %d ' % (self.pktCount)
+    def pkt_fill(self, index):
+        START = 'pkt# %d ' % (index)
         remaining = self.pktSize - len(START)
         chars=string.ascii_uppercase + string.digits
         return START + ''.join(random.choice(chars) for _ in range(remaining))
 
 
 
-    def create_lbf_pkt (self):
-
-        content = self.pkt_fill()
+    def create_lbf_pkt (self, content):
         self.sender.make_packet(self.src_addr_type, self.src_addr,
                                self.dst_addr_type, self.dst_addr, content)
         if (self.lbfList != None):
@@ -209,11 +207,14 @@ class lbf_forwarder:
         self.src_addr = self.netObj.info_dict[self.src][self.src_addr_type]
         self.dst_addr = self.netObj.info_dict[self.dst][self.dst_addr_type]
         self.sender = sender ()
-        self.create_lbf_pkt () 
         with self.srcNode:
             if self.useTcpReplay:
                 os.system (f'tc qdisc replace dev {self.srcIf} root pfifo')
-            self.sender.send_packet(iface=self.srcIf, show_pkt=self.showPacket)
+            for index in range(self.pktCount):
+                payload = self.pkt_fill(index)
+                self.create_lbf_pkt (payload)
+                self.sender.send_packet(iface=self.srcIf,
+                                        show_pkt=self.showPacket)
 
     def replay (self):
         if (self.pcap == ""):
