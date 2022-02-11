@@ -40,22 +40,22 @@ class lbf_forwarder:
         self.srcIf = self.srcNode._interfaces[0].name
         recVerbose = True
         self.pcapDirName = str(datetime.now()).replace(" ","-")
-        if (self.useTcpReplay):
-            self.netObj.generate_pcap (timeout=self.timeout, nodelist=[self.srcNode], dir_name=self.pcapDirName)
-            recVerbose = False
-        else :
-            if (self.pcapAll):
-                self.netObj.generate_pcap(timeout=self.timeout, dir_name=self.pcapDirName)
-            elif (self.pcapDst):
-                self.netObj.generate_pcap (timeout=self.timeout, nodelist=[self.dstNode], dir_name=self.pcapDirName)
-            elif (self.pcapInterfaceList):
-                self.netObj.generate_pcap (timeout=self.timeout, interfaces=self.pcapInterfaceList, dir_name=self.pcapDirName)
-            elif (self.pcapNodeList):
-                self.netObj.generate_pcap (timeout=self.timeout, nodelist=self.pcapNodeList, dir_name=self.pcapDirName)
+        if (self.pcap == ""):
+            if (self.useTcpReplay):
+                self.netObj.generate_pcap (timeout=self.timeout, nodelist=[self.srcNode], dir_name=self.pcapDirName)
+                recVerbose = False
+            else :
+                if (self.pcapAll):
+                    self.netObj.generate_pcap(timeout=self.timeout, dir_name=self.pcapDirName)
+                elif (self.pcapDst):
+                    self.netObj.generate_pcap (timeout=self.timeout, nodelist=[self.dstNode], dir_name=self.pcapDirName)
+                elif (self.pcapInterfaceList):
+                    self.netObj.generate_pcap (timeout=self.timeout, interfaces=self.pcapInterfaceList, dir_name=self.pcapDirName)
+                elif (self.pcapNodeList):
+                    self.netObj.generate_pcap (timeout=self.timeout, nodelist=self.pcapNodeList, dir_name=self.pcapDirName)
         
-        self.netObj.start_receiver (timeout=self.timeout, nodeList=[self.dstNode], verbose=recVerbose)
-
-        self.start_forwarder()
+            self.netObj.start_receiver (timeout=self.timeout, nodeList=[self.dstNode], verbose=recVerbose)
+            self.start_forwarder()
 
         if (self.useTcpReplay):
             self.replay()
@@ -96,6 +96,9 @@ class lbf_forwarder:
         self.parser.add_argument("--pkt-size",     "-s",   type=int,
                             default = 100,
                             help="pkt size")
+        self.parser.add_argument("--pcap-file",    "-pf",
+                            default = "",
+                            help="pcap file to be replayed, use with -tr")
         
         self.parser.add_argument("--pcap-all",    "-pa",   action='store_true',
                             default=False,
@@ -150,6 +153,7 @@ class lbf_forwarder:
         self.showPacket = args.show_packet
         self.pktCount = args.pkt_count
         self.pktSize = args.pkt_size
+        self.pcap = args.pcap_file
 
         self.pcapAll = args.pcap_all
         self.pcapDst = args.pcap_dst
@@ -212,11 +216,12 @@ class lbf_forwarder:
             self.sender.send_packet(iface=self.srcIf, show_pkt=self.showPacket)
 
     def replay (self):
-        print("waiting for receiver processes to end...")
-        time.sleep(self.timeout)
-        os.system (f'cp {self.pcapDirName}/{self.srcIf}.pcap {self.pcapDirName}/replay.pcap')
-        with self.srcNode:
-            os.system (f'tc qdisc replace dev {self.srcIf} root lbf') 
+        if (self.pcap == ""):
+            print("waiting for receiver processes to end...")
+            time.sleep(self.timeout)
+            os.system (f'cp {self.pcapDirName}/{self.srcIf}.pcap {self.pcapDirName}/replay.pcap')
+            with self.srcNode:
+                os.system (f'tc qdisc replace dev {self.srcIf} root lbf') 
         self.netObj.start_receiver (timeout=self.timeout, nodeList=[self.dstNode])
 
         if (self.pcapAll):
@@ -227,8 +232,10 @@ class lbf_forwarder:
             self.netObj.generate_pcap (timeout=self.timeout, interfaces=self.pcapInterfaceList, dir_name=self.pcapDirName)
         elif (self.pcapNodeList):
             self.netObj.generate_pcap (timeout=self.timeout, nodelist=self.pcapNodeList, dir_name=self.pcapDirName)
-
-        replayFile  = f'{self.pcapDirName}/replay.pcap'
+        if (self.pcap != ""):
+            replayFile  = self.pcap
+        else:
+            replayFile  = f'{self.pcapDirName}/replay.pcap'
 
         with self.srcNode:
             if (self.trTopspeed):
