@@ -91,6 +91,14 @@ class LatencyBasedForwarding(Packet):
         ShortField('fib_tohops',0),
     ]
 
+class Ping(Packet):
+    name = "Ping Contract"
+    fields_desc = [
+        ShortField("contract_type", 3),
+        # 0 for request, 1 for response
+        ShortField("code", 0),
+        ShortField("hops", 60),
+    ]
 
 # bind_layers(Ether, NewIP, type=0x88b6)
 bind_layers(Ether, NewIPOffset, type=0x88b6)

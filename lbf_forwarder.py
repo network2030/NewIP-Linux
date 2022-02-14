@@ -15,10 +15,10 @@ class lbfObj:
         self.hops      = int(hops)
         self.fib_delay = 0
 
-    def get(self):
+    def get_lbf_params(self):
         return [self.c_min_delay, self.c_max_delay, 0, self.hops]
 
-    def set(self, min_delay, max_delay, hops):
+    def set_lbf_params(self, min_delay, max_delay, hops):
         self.c_min_delay = int(min_delay)
         self.c_max_delay = int(max_delay)
         self.hops      = int(hops)
@@ -53,8 +53,8 @@ class lbf_forwarder:
                     self.netObj.generate_pcap (timeout=self.timeout, interfaces=self.pcapInterfaceList, dir_name=self.pcapDirName)
                 elif (self.pcapNodeList):
                     self.netObj.generate_pcap (timeout=self.timeout, nodelist=self.pcapNodeList, dir_name=self.pcapDirName)
-        
-            self.netObj.start_receiver (timeout=self.timeout, nodeList=[self.dstNode], verbose=recVerbose)
+            
+            self.netObj.start_receiver(timeout=self.timeout, nodeList=[self.dstNode], verbose=recVerbose)
             self.start_forwarder()
 
         if (self.useTcpReplay):
@@ -66,6 +66,12 @@ class lbf_forwarder:
         # example -i h1_r1 -st 8b -dt 8b -da h1 -sa h3 -s 30  -c 10
         # self.parser.add_argument("--interface", "-i", required=True,
         #                     help="set source address type")               Not required as we are specifying the src host and we only have 1 interface
+        self.parser.add_argument(
+            "--ping",
+            "-p",
+            action="store_true",
+            default=False
+        )
         self.parser.add_argument("--src-type", "-st",
                             choices={'8bit','ipv4', 'ipv6'},
                             default='ipv4',
@@ -85,7 +91,7 @@ class lbf_forwarder:
         self.parser.add_argument("--lbf-contract",    "-lbf",   action='store', nargs="*",
                             help="Use lbf contract with min and max delay. usage -lbf min_delay max_delay")
         self.parser.add_argument("--timeout",     "-t",   type=int,
-                            default = 5,
+                            default = 10,
                             help="timeout for receiver and pcap capture")
         self.parser.add_argument("--show-packet",     "-sp", action='store_true',
                             default = False,
@@ -148,6 +154,8 @@ class lbf_forwarder:
         self.dst = args.dst
         if args.lbf_contract is not None and len(args.lbf_contract) not in (0, 2):
             self.parser.error('Either give no values for contract, or two, not {}.'.format(len(args.lbf_contract)))
+        
+        self.ping = args.ping
         self.lbfList = args.lbf_contract
         self.timeout = args.timeout
         self.showPacket = args.show_packet
@@ -196,25 +204,41 @@ class lbf_forwarder:
             self.lbfObj = lbfObj(self.min_delay, self.max_delay, self.hops)
 
             if (self.lbfList != []):
-                self.lbfObj.set (self.lbfList[0], self.lbfList[1], self.hops)
+                self.lbfObj.set_lbf_params(self.lbfList[0], self.lbfList[1], self.hops)
 
-            params = self.lbfObj.get()
+            params = self.lbfObj.get_lbf_params()
             self.sender.insert_contract('latency_based_forwarding', params)
  
+    def create_ping_pkt(self):
+        self.sender.make_packet(
+            self.src_addr_type,
+            self.src_addr, 
+            self.dst_addr_type, 
+            self.dst_addr,
+            "PING" 
+        )
+        self.sender.insert_contract('ping_contract', params=[0])
 
-    def start_forwarder (self):
+    def start_forwarder(self):
         # pkt_fill(self.count, self.size):      // TODO check this
         self.src_addr = self.netObj.info_dict[self.src][self.src_addr_type]
         self.dst_addr = self.netObj.info_dict[self.dst][self.dst_addr_type]
-        self.sender = sender ()
+        self.sender = sender()
+        
         with self.srcNode:
             if self.useTcpReplay:
                 os.system (f'tc qdisc replace dev {self.srcIf} root pfifo')
             for index in range(self.pktCount):
-                payload = self.pkt_fill(index)
-                self.create_lbf_pkt (payload)
+                if self.ping:
+                    self.create_ping_pkt()
+                else:
+                    payload = self.pkt_fill(index)
+                    self.create_lbf_pkt(payload)
+                
                 self.sender.send_packet(iface=self.srcIf,
                                         show_pkt=self.showPacket)
+                if self.ping:
+                    self.netObj.start_receiver(timeout=self.timeout, nodeList=[self.srcNode], verbose=True, pkt_sender=self.sender)      
 
     def replay (self):
         if (self.pcap == ""):

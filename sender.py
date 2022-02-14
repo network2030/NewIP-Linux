@@ -1,6 +1,6 @@
+import time
 from scapy.all import *
-from newip_hdr import LatencyBasedForwarding, ShippingSpec, NewIPOffset, MaxDelayForwarding
-from nest.routing.routing_helper import RoutingHelper
+from newip_hdr import LatencyBasedForwarding, ShippingSpec, NewIPOffset, MaxDelayForwarding, Ping
 
 
 class sender:
@@ -8,9 +8,10 @@ class sender:
         conf.route.resync()
         conf.route6.resync()
         self.contracts = None
+        self.last_packet_ts = -1
         # self.pktdump = PcapWriter('newip.pcap', append=True)
 
-    def make_packet(self, src_addr_type, src_addr, dst_addr_type, dst_addr, content):
+    def make_packet(self, src_addr_type, src_addr, dst_addr_type, dst_addr, content=""):
         self.content = content
         # self.pkt = ShippingSpec(src_addr_type=src_addr_type, src=src_addr,
         #                         dst_addr_type=dst_addr_type, dst=dst_addr)
@@ -18,7 +19,7 @@ class sender:
                                  dst_addr_type=dst_addr_type, dst=dst_addr
                                  )
 
-    def insert_contract(self, contract_type, params):
+    def insert_contract(self, contract_type, params=[]):
         if self.contracts is None:
             # params['max_allowed_delay']
             if contract_type == 'max_delay_forwarding':
@@ -31,6 +32,9 @@ class sender:
                     params = [0,0,0,0]
                 self.contracts = LatencyBasedForwarding(
                     min_delay=params[0], max_delay = params[1], fib_todelay = params[2], fib_tohops = params[3])
+            elif contract_type == 'ping_contract':
+                ping_code = params[0] if params else 0
+                self.contracts = Ping(code=ping_code)
         else:
             if contract_type == 'max_delay_forwarding':
                 if params == []:
@@ -42,6 +46,10 @@ class sender:
                     params = [0,0,0,0]
                 self.contracts = self.contracts / \
                 LatencyBasedForwarding(min_delay=params[0], max_delay = params[1], fib_todelay = params[2], fib_tohops = params[3])
+            
+            elif contract_type == 'ping_contract':
+                ping_code = params[0] if params else 0
+                self.contracts = self.contracts / Ping(code=ping_code)
 
     def send_packet(self, iface, show_pkt=False, count=1):
         self.offset = NewIPOffset()
@@ -75,6 +83,8 @@ class sender:
 
         if show_pkt:
             self.show_packet()
+
+        self.last_packet_ts = time.time_ns()
         sendp(self.pkt, iface=iface, verbose=False, count=count)
         self.contracts = None
         # self.pktdump.write(self.pkt)
