@@ -180,10 +180,20 @@ int xdp_router_func(struct xdp_md *ctx)
 			}
 			contract_type = bpf_ntohs(*contract_ptr);
 			// bpf_printk ("contract type: %d\n", contract_type);
-			if(contract_type){
-			}
-			if (contract_type == 1)
-			{
+			if (contract_type == 3){
+				// Ping contract
+				struct ping_contract *ping;
+				ping = (struct ping_contract *)contract_ptr;
+				if (ping + 1 > data_end) {
+					action = XDP_DROP;
+					goto out;
+				}
+				// Reduce hop by one. 
+				// Note: This will be done once per router
+				ping->hops = bpf_htons(bpf_ntohs(ping->hops) - 1);
+				// bpf_printk("Ping Code: %d       Hops: %d\n", bpf_ntohs(ping->code), bpf_ntohs(ping->hops));
+
+			} else if (contract_type == 1) {
 				struct max_delay_forwarding *mdf;
 				mdf = (struct max_delay_forwarding *)contract_ptr;
 				if(mdf + 1 > data_end){

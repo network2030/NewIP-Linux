@@ -37,7 +37,7 @@ class receiver:
                     # Ping reply
                     if pkt_sender:
                         rtt = round((time.time_ns() - pkt_sender.last_packet_ts) / 1e6, 3)
-                        print(f"PING reply from {ship_layer.src} time={rtt}ms")
+                        print(f"PING reply from {ship_layer.src} time={rtt}ms ttl={ping_contract[Ping].hops}")
 
         # print('Received Payload at ' + self.node.name + ' :')
         # if (self.verbose):

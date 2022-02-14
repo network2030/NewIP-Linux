@@ -97,7 +97,7 @@ class Ping(Packet):
         ShortField("contract_type", 3),
         # 0 for request, 1 for response
         ShortField("code", 0),
-        ShortField("hops", 60),
+        ShortField("hops", 255),
     ]
 
 # bind_layers(Ether, NewIP, type=0x88b6)
