@@ -1,6 +1,6 @@
 import time
 from scapy.all import *
-from newip_hdr import LatencyBasedForwarding, ShippingSpec, NewIPOffset, MaxDelayForwarding, Ping
+from New_IP.newip_hdr import LatencyBasedForwarding, ShippingSpec, NewIPOffset, MaxDelayForwarding, Ping
 
 
 class sender:

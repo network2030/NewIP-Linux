@@ -12,3 +12,4 @@ xdp/newip_router/xdp_loader
 xdp/newip_router/xdp_prog_user
 pcap/
 202*/
+New_IP.egg-info/

@@ -1,7 +1,7 @@
 import time
 from scapy.all import *
-from sender import sender
-from newip_hdr import (
+from New_IP.sender import sender
+from New_IP.newip_hdr import (
     ShippingSpec,
     NewIPOffset,
     MaxDelayForwarding,

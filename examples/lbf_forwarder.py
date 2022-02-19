@@ -3,8 +3,8 @@ import random
 import string
 import time
 import os
-from setup import setup
-from sender import sender
+from New_IP.setup import setup
+from New_IP.sender import sender
 from datetime import datetime
 
 class lbfObj:

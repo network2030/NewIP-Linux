@@ -1,7 +1,7 @@
 # Sending LBF contract packet with min delay as 500ms and max delay as 800ms
 
-from setup import setup
-from sender import sender
+from New_IP.setup import setup
+from New_IP.sender import sender
 import os
 import time
 
