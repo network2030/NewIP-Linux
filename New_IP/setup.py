@@ -25,7 +25,6 @@ from New_IP.receiver import receiver
 
 def tcpdump_proc (interface, timeout, dirName):
     os.system (f'timeout {timeout} tcpdump -i ' + interface.name + f' -w {dirName}/' + interface.name +'.pcap' + ' ether proto 0x88b6' + f' >>  {dirName}/tcpdump_logs.txt 2>&1')
-    # os.system (f'timeout {timeout} tcpdump -i ' + interface.name + f' -w abcd/' + interface.name +'.pcap' + ' ether proto 0x88b6' + f' >>  abcd/tcpdump_logs.txt 2>&1')
 
 def receiver_proc(node, iface, timeout, pkt_sender, verbose = True):
     receiver_obj = receiver(node, verbose)

@@ -4,11 +4,9 @@ from scapy.all import *
 class NewIPOffset(Packet):
     name = 'New IP Offset'
     fields_desc = [
-        # ByteField('shipping_offset', 4),
         ByteField('shipping_offset', 3),
         ByteField('contract_offset', 0),
         ByteField('payload_offset', 0),
-        # ByteField('type', 0),
     ]
 
     def mysummary(self):
@@ -41,7 +39,6 @@ class ShippingSpec(Packet):
         # Destination Address Type
         ByteEnumField('dst_addr_type', 0, sh_addr_type),
         ByteEnumField('addr_cast', 0, sh_addr_cast),  # Address Cast
-        # ByteEnumField('type', 0, contract_type),  # Type of next Field
         MultipleTypeField(  # Source Address
             [
                 # IPv4
@@ -99,9 +96,4 @@ class Ping(Packet):
         ShortField("code", 0),
         ShortField("hops", 255),
     ]
-
-# bind_layers(Ether, NewIP, type=0x88b6)
 bind_layers(Ether, NewIPOffset, type=0x88b6)
-# bind_layers(NewIPOffset, ShippingSpec, type=1)
-# bind_layers(ShippingSpec, MaxDelayForwarding, type=1)
-# bind_layers(ShippingSpec, LatencyBasedForwarding, type=2) 

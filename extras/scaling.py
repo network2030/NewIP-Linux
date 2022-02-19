@@ -12,8 +12,8 @@ import os
 import subprocess
 
 # from router import router
-from receiver import receiver
-from sender import sender
+from New_IP.receiver import receiver
+from New_IP.sender import sender
 
 config.set_value('assign_random_names', False)
 # config.set_value('delete_namespaces_on_termination', False)

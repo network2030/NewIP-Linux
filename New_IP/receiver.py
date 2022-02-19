@@ -61,5 +61,3 @@ class receiver:
         )
         if self.verbose:
             print("[INFO] " + str(len(pkts)) + " pkts received at " + self.node.name)
-        # Uncomment the line below to generate pcap files for receiver nodess
-        # wrpcap('NewIP.pcap ' + str(self.node),pkts)

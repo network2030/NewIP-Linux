@@ -9,12 +9,9 @@ class sender:
         conf.route6.resync()
         self.contracts = None
         self.last_packet_ts = -1
-        # self.pktdump = PcapWriter('newip.pcap', append=True)
 
     def make_packet(self, src_addr_type, src_addr, dst_addr_type, dst_addr, content=""):
         self.content = content
-        # self.pkt = ShippingSpec(src_addr_type=src_addr_type, src=src_addr,
-        #                         dst_addr_type=dst_addr_type, dst=dst_addr)
         self.ship = ShippingSpec(src_addr_type=src_addr_type, src=src_addr,
                                  dst_addr_type=dst_addr_type, dst=dst_addr
                                  )
@@ -87,7 +84,6 @@ class sender:
         self.last_packet_ts = time.time_ns()
         sendp(self.pkt, iface=iface, verbose=False, count=count)
         self.contracts = None
-        # self.pktdump.write(self.pkt)
 
 
     def show_packet(self):

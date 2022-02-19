@@ -10,8 +10,8 @@ import os
 import subprocess
 
 # from router import router
-from receiver import receiver
-from sender import sender
+from New_IP.receiver import receiver
+from New_IP.sender import sender
 
 config.set_value('assign_random_names', False)
 # config.set_value('delete_namespaces_on_termination', False)
@@ -33,7 +33,7 @@ if os.system('make -C xdp/newip_router/') != 0:
     exit()
 
 # Verify no errors in qdisc
-if os.system('cd lbf; ./install-module') != 0:  # TODO doesn't seem to work
+if os.system('cd lbf; ./install-module') != 0:
     exit()
 if os.system('cd lbf; ./install-tc-support') != 0: 
     exit()

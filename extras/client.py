@@ -1,5 +1,5 @@
-from setup import setup
-from sender import sender
+from New_IP.setup import setup
+from New_IP.sender import sender
 
 setup_obj = setup()
 setup_obj.setup_topology ()
