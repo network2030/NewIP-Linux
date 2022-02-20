@@ -58,13 +58,17 @@ class sender:
             self.pkt = self.eth/self.offset/self.ship/self.contracts/self.content
         # Update offsets
         self.pkt[NewIPOffset].shipping_offset = len(self.offset)
-        self.pkt[NewIPOffset].contract_offset = self.pkt[NewIPOffset].shipping_offset + \
+        if self.contracts:
+            self.pkt[NewIPOffset].contract_offset = self.pkt[NewIPOffset].shipping_offset + \
             len(self.ship)
-        if self.contracts is None:
-            self.pkt[NewIPOffset].payload_offset = self.pkt[NewIPOffset].contract_offset
         else:
-            self.pkt[NewIPOffset].payload_offset = self.pkt[NewIPOffset].contract_offset + \
-                len(self.contracts)
+            self.pkt[NewIPOffset].contract_offset = 0
+            # self.pkt[NewIPOffset].contract_offset = self.pkt[NewIPOffset].shipping_offset + \
+            # len(self.ship)
+
+        self.pkt[NewIPOffset].payload_offset = self.pkt[NewIPOffset].shipping_offset + \
+            len(self.ship) + (len(self.contracts) if  self.contracts else 0)
+
         # Populate src mac
         self.pkt[Ether].src = get_if_hwaddr(iface)
         # Populate dst mac

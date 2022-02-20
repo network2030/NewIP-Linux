@@ -287,7 +287,8 @@ static int lbf_enqueue(struct sk_buff *skb, struct Qdisc *sch,
 	if (eth->h_proto == htons(ETH_P_NEWIP))
 	{
 		struct newip_offset *newipoff = (struct newip_offset *)skb_network_header(skb);
-		if (newipoff->contract_offset != newipoff->payload_offset)
+		printk("contract offset: %d",newipoff->contract_offset);
+		if (newipoff->contract_offset != newipoff->payload_offset || newipoff->contract_offset != 0)
 		{
 			void *contract = skb_network_header(skb) + newipoff->contract_offset;
 			if (*(__u16 *)contract == htons(1))
@@ -598,7 +599,7 @@ static struct sk_buff *lbf_dequeue(struct Qdisc *sch)
 		q->stats.delay = PSCHED_TICKS2NS(psched_get_time() - lbf_get_enqueue_time(skb))/NSEC_PER_USEC; // in usec
 		// printk("Time stayed in queue: %lld",q->stats.delay/100);   // in 10^-4s
 		struct newip_offset *newipoff = (struct newip_offset *)skb_network_header(skb);
-		if (newipoff->contract_offset != newipoff->payload_offset)
+		if (newipoff->contract_offset != newipoff->payload_offset || newipoff->contract_offset != 0)
 		{
 			void *contract = skb_network_header(skb) + newipoff->contract_offset;
 			struct latency_based_forwarding *lbf = (struct latency_based_forwarding*)contract;
@@ -625,7 +626,7 @@ static struct sk_buff *lbf_dequeue(struct Qdisc *sch)
 	if (eth->h_proto == htons(ETH_P_NEWIP))
 	{
 		struct newip_offset *newipoff = (struct newip_offset *)skb_network_header(skb);
-		if (newipoff->contract_offset != newipoff->payload_offset)
+		if (newipoff->contract_offset != newipoff->payload_offset || newipoff->contract_offset != 0)
 		{
 			struct max_delay_forwarding *mdf = (struct max_delay_forwarding *)(skb_network_header(skb) + newipoff->contract_offset);
 			if (mdf->contract_type == htons(1))
