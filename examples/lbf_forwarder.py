@@ -39,7 +39,12 @@ class lbf_forwarder:
         self.dstNode = self.netObj.info_dict[self.dst]['node']
         self.srcIf = self.srcNode._interfaces[0].name
         recVerbose = True
-        self.pcapDirName = str(datetime.now()).replace(" ","-")
+        self.pcapDirName = datetime.now().strftime("%Y_%m_%d-%I:%M:%S_%p")
+        try:
+            os.remove("./latest")
+        except OSError:
+            pass
+        os.symlink(self.pcapDirName, "./latest")
         if (self.pcap == ""):
             if (self.useTcpReplay):
                 self.netObj.generate_pcap (timeout=self.timeout, nodelist=[self.srcNode], dir_name=self.pcapDirName)
