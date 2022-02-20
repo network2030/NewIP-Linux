@@ -83,6 +83,22 @@ def setup_router(node, interfaces):
                     ' ingress bpf da obj ../xdp/newip_router/tc_prog_kern.o sec tc_router')
             os.system('tc qdisc replace dev ' + interface.name + ' root lbf')
 
+def check_and_set_routing_suite(routing):
+    rtg_path = os.path.join("/run", routing)
+    exists = os.path.exists(rtg_path)
+    if exists:
+        print ('[INFO] : Routing suite is set with', routing)
+        return
+
+    # this can be a silent error. next cmd will also fail
+    os.system('mkdir "' + rtg_path + '"')
+
+    if os.system('chown  %s %s' % (routing, rtg_path)) != 0:
+        print ('Routing suite NOT ready ', routing)
+        exit(-1)
+
+    print ('INFO: Routing suite is set with ', routing)
+
 class setup:
     def __init__(self):
         pass
@@ -120,6 +136,7 @@ class setup:
 
 
     def setup_topology(self, routing = "quagga", buildLbf = False):
+        check_and_set_routing_suite(routing)
         config.set_value('assign_random_names', False)
         # config.set_value('delete_namespaces_on_termination', False)
         # config.set_value("routing_logs", True)
