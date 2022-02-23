@@ -12,15 +12,19 @@
 
 #include "newip.h"
 
-#define AF_INET 2
-#define AF_INET6 10
 #define ETH_P_NEWIP 0x88b6
+
+struct lbf_skb_cb
+{
+    int val;
+};
 
 SEC("tc_router")
 int tc_router_func(struct __sk_buff *ctx){
     void *data = (void *)(unsigned long)ctx->data;
     void *data_end = (void *)(unsigned long)ctx->data_end;
     void *data_meta = (void *)(unsigned long)ctx->data_meta;
+    struct lbf_skb_cb *cb = (struct lbf_skb_cb *)ctx->cb;
     struct meta_info *meta = data_meta;
     struct ethhdr *eth = data;
     int action = TC_ACT_UNSPEC;
@@ -44,6 +48,10 @@ int tc_router_func(struct __sk_buff *ctx){
     action =  bpf_redirect(meta->ifindex, 0);
 
 out:
+    cb->val = 65;
+    // for(int i=0; i<5; i++){
+    //     ctx->cb[i]=65+i;
+    // }
     return action;
 }
 

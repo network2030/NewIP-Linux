@@ -60,7 +60,11 @@ static int static_redirect_non_ip (int map_fd, __u8* dst, __u32* ifindex)
 			errno, strerror(errno));
 		return -1;
 	}
-	printf ("Redirecting dst address: %d to ifindex: %d\n", *dst, *ifindex);
+	if (verbose)
+	{
+		printf ("Redirecting dst address: %d to ifindex: %d\n", *dst, *ifindex);
+	}
+
 	return 0;
 }
 
@@ -89,7 +93,10 @@ int main(int argc, char **argv)
 		fprintf(stderr, "ERR: creating pin dirname\n");
 		return EXIT_FAIL_OPTION;
 	}
-	printf("map dir: %s\n", pin_dir);
+	if (verbose)
+	{
+		printf("map dir: %s\n", pin_dir);
+	}
 
 	/* Open the static_redirect_8b map corresponding to the cfg.ifname interface */
 	map_fd = open_bpf_map_file(pin_dir, "static_redirect_8b", NULL);

@@ -15,6 +15,15 @@
 #include "newip.h"
 #include <stdio.h>
 
+#ifndef AF_INET
+#define AF_INET 1
+#endif
+
+#ifndef AF_INET6
+#define AF_INET6 6
+#endif
+
+
 #ifndef memcpy
 #define memcpy(dest, src, n) __builtin_memcpy((dest), (src), (n))
 #endif
@@ -26,8 +35,6 @@ struct bpf_map_def SEC("maps") static_redirect_8b = {
 	.max_entries = 256,
 };
 
-#define AF_INET 2
-#define AF_INET6 10
 #define IPV6_FLOWINFO_MASK bpf_htonl(0x0FFFFFFF)
 
 #define ETH_P_NEWIP 0x88b6
@@ -87,9 +94,9 @@ int xdp_router_func(struct xdp_md *ctx)
 		{
 			return XDP_ABORTED;
 		}
-		int val = shipping_spec->src_addr_type;
+		// int val = shipping_spec->src_addr_type;
 		// bpf_printk("src type: %d\n", val);
-		val = shipping_spec->dst_addr_type;
+		// val = shipping_spec->dst_addr_type;
 		// bpf_printk("dst type: %d\n", val);
 		__u8 type_src = shipping_spec->src_addr_type;
 		__u32 *newiphdr_v4_src;
@@ -173,10 +180,20 @@ int xdp_router_func(struct xdp_md *ctx)
 			}
 			contract_type = bpf_ntohs(*contract_ptr);
 			// bpf_printk ("contract type: %d\n", contract_type);
-			if(contract_type){
-			}
-			if (contract_type == 1)
-			{
+			if (contract_type == 3){
+				// Ping contract
+				struct ping_contract *ping;
+				ping = (struct ping_contract *)contract_ptr;
+				if (ping + 1 > data_end) {
+					action = XDP_DROP;
+					goto out;
+				}
+				// Reduce hop by one. 
+				// Note: This will be done once per router
+				ping->hops = bpf_htons(bpf_ntohs(ping->hops) - 1);
+				// bpf_printk("Ping Code: %d       Hops: %d\n", bpf_ntohs(ping->code), bpf_ntohs(ping->hops));
+
+			} else if (contract_type == 1) {
 				struct max_delay_forwarding *mdf;
 				mdf = (struct max_delay_forwarding *)contract_ptr;
 				if(mdf + 1 > data_end){
@@ -185,7 +202,7 @@ int xdp_router_func(struct xdp_md *ctx)
 				}
 				meta->contract.max_allowed_delay = mdf->max_allowed_delay;
 				meta->contract.delay_exp = mdf->delay_exp;
-				bpf_printk("max allowed delay: %d...delay_exp: %d\n", bpf_ntohs(meta->contract.max_allowed_delay), bpf_ntohs(meta->contract.delay_exp));
+				// bpf_printk("max allowed delay: %d...delay_exp: %d\n", bpf_ntohs(meta->contract.max_allowed_delay), bpf_ntohs(meta->contract.delay_exp));
 			}
 		}
 		if (type_dst == NEWIP_T_8b)
@@ -219,6 +236,7 @@ int xdp_router_func(struct xdp_md *ctx)
 		action = XDP_DROP;
 		break;
 	case BPF_FIB_LKUP_RET_NOT_FWDED:	/* packet is not forwarded */
+		bpf_printk ("route not found, check if routing suite is working properly");
 	case BPF_FIB_LKUP_RET_FWD_DISABLED: /* fwding is not enabled on ingress */
 	case BPF_FIB_LKUP_RET_UNSUPP_LWT:	/* fwd requires encapsulation */
 	case BPF_FIB_LKUP_RET_NO_NEIGH:		/* no neighbor entry for nh */
