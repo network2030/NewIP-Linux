@@ -15,7 +15,6 @@ class sender:
         conf.route.resync()
         conf.route6.resync()
         self.contracts = None
-        self.last_packet_ts = -1
         self.mac_broadcast = "ff:ff:ff:ff:ff:ff"
         self.mac_localhost = "00:00:00:00:00:00"
 
@@ -70,7 +69,7 @@ class sender:
                     min_delay=params[0], max_delay = params[1], fib_todelay = params[2], fib_tohops = params[3])
             elif contract_type == 'ping_contract':
                 ping_code = params[0] if params else 0
-                self.contracts = Ping(code=ping_code)
+                self.contracts = Ping(code=ping_code, timestamp=params[1])
         else:
             if contract_type == 'max_delay_forwarding':
                 if params == []:
@@ -85,7 +84,7 @@ class sender:
             
             elif contract_type == 'ping_contract':
                 ping_code = params[0] if params else 0
-                self.contracts = self.contracts / Ping(code=ping_code)
+                self.contracts = self.contracts / Ping(code=ping_code, timestamp=params[1])
 
     def send_packet(self, iface, show_pkt=False, count=1):
         self.offset = NewIPOffset()
@@ -114,7 +113,6 @@ class sender:
         if show_pkt:
             self.show_packet()
 
-        self.last_packet_ts = time.time_ns()
         sendp(self.pkt, iface=iface, verbose=False, count=count)
         self.contracts = None
 

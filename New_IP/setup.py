@@ -26,9 +26,9 @@ from New_IP.receiver import receiver
 def tcpdump_proc (interface, timeout, dirName):
     os.system (f'timeout {timeout} tcpdump -i ' + interface.name + f' -w {dirName}/' + interface.name +'.pcap' + ' ether proto 0x88b6' + f' >>  {dirName}/tcpdump_logs.txt 2>&1')
 
-def receiver_proc(node, iface, timeout, pkt_sender, verbose = True):
+def receiver_proc(node, iface, timeout, verbose = True):
     receiver_obj = receiver(node, verbose)
-    receiver_obj.start(iface=iface, timeout=timeout, pkt_sender=pkt_sender)
+    receiver_obj.start(iface=iface, timeout=timeout)
 
 def setup_host(node, interfaces):
     with node:
@@ -103,14 +103,14 @@ class setup:
     def __init__(self):
         pass
 
-    def start_receiver (self, timeout = 5, verbose = True, nodeList=[], pkt_sender=None):
+    def start_receiver (self, timeout = 5, verbose = True, nodeList=[]):
         if not nodeList:
             nodeList = self.hostNodes
         for node in nodeList:
             for interface in node._interfaces:
                 with node:
                     receiver_process = multiprocessing.Process(
-                        target=receiver_proc, args=(node, interface, timeout, pkt_sender, verbose,))
+                        target=receiver_proc, args=(node, interface, timeout, verbose,))
                     receiver_process.start()
 
         # Ensure routers and receivers have started

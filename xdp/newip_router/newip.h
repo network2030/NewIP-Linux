@@ -27,6 +27,7 @@ struct ping_contract
     __u16 contract_type;
     __u16 code;
     __u16 hops;
+    __u64 timestamp;
 };
 
 struct latency_based_forwarding

@@ -95,5 +95,7 @@ class Ping(Packet):
         # 0 for request, 1 for response
         ShortField("code", 0),
         ShortField("hops", 255),
+        # timestamp in microseconds. 8bytes
+        LongField("timestamp", 0)
     ]
 bind_layers(Ether, NewIPOffset, type=0x88b6)

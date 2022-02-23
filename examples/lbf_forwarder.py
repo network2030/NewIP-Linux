@@ -223,17 +223,22 @@ class lbf_forwarder:
             self.dst_addr,
             "PING" 
         )
-        self.sender.insert_contract('ping_contract', params=[0])
+        sending_ts = time.time_ns() // 1000000
+        self.sender.insert_contract('ping_contract', params=[0,sending_ts])
 
     def start_forwarder(self):
         # pkt_fill(self.count, self.size):      // TODO check this
         self.src_addr = self.netObj.info_dict[self.src][self.src_addr_type]
         self.dst_addr = self.netObj.info_dict[self.dst][self.dst_addr_type]
         
+        if self.ping:
+            self.netObj.start_receiver(timeout=self.timeout, nodeList=[self.srcNode], verbose=True)      
+        
         with self.srcNode:
             self.sender = sender()
             if self.useTcpReplay:
                 os.system (f'tc qdisc replace dev {self.srcIf} root pfifo')
+
             for index in range(self.pktCount):
                 if self.ping:
                     self.create_ping_pkt()
@@ -242,10 +247,7 @@ class lbf_forwarder:
                     self.create_lbf_pkt(payload)
                 
                 self.sender.send_packet(iface=self.srcIf,
-                                        show_pkt=self.showPacket)
-                if self.ping:
-                    self.netObj.start_receiver(timeout=self.timeout, nodeList=[self.srcNode], verbose=True, pkt_sender=self.sender)      
-
+                                        show_pkt=self.showPacket)                
     def replay (self):
         if (self.pcap == ""):
             print("waiting for receiver processes to end...")
