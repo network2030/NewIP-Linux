@@ -4,15 +4,13 @@ from New_IP.sender import sender
 from New_IP.newip_hdr import (
     ShippingSpec,
     NewIPOffset,
-    MaxDelayForwarding,
-    LatencyBasedForwarding,
     Ping,
 )
 
 
 class receiver:
     @staticmethod
-    def process_pkt(self, pkt, iface, pkt_sender):
+    def process_pkt(self, pkt, iface):
         if pkt[NewIPOffset].contract_offset != pkt[NewIPOffset].payload_offset:
             # Contract exists
             ship_layer = ShippingSpec(pkt[Raw].load)
@@ -22,6 +20,10 @@ class receiver:
                 ping_contract = Ping(ship_payload)
                 if ping_contract[Ping].code == 0:
                     # Ping request packet
+                    
+                    # Get the sending timestamp
+                    snder_ts = ping_contract[Ping].timestamp
+
                     # Send a response back
                     pong_sender = sender()
                     pong_sender.make_packet(
@@ -31,13 +33,12 @@ class receiver:
                         dst_addr=ship_layer.src,
                         content="PONG",
                     )
-                    pong_sender.insert_contract("ping_contract", params=[1])
+                    pong_sender.insert_contract("ping_contract", params=[1, snder_ts])
                     pong_sender.send_packet(iface=iface)
                 else:
-                    # Ping reply
-                    if pkt_sender:
-                        rtt = round((time.time_ns() - pkt_sender.last_packet_ts) / 1e6, 3)
-                        print(f"PING reply from {ship_layer.src} time={rtt}ms ttl={ping_contract[Ping].hops}")
+                    # Received a Ping reply
+                    rtt = round(time.time_ns() // 1000000 - ping_contract[Ping].timestamp, 4)
+                    print(f"PING reply from {ship_layer.src} time={rtt}ms ttl={ping_contract[Ping].hops}")
 
         # print('Received Payload at ' + self.node.name + ' :')
         # if (self.verbose):
@@ -49,14 +50,14 @@ class receiver:
         conf.sniff_promisc = 0
         self.node = node
 
-    def start(self, iface, pkt_sender, timeout=20):
+    def start(self, iface, timeout=20):
         if not isinstance(iface, str):
             iface = iface.name
 
         pkts = sniff(
             iface=iface,
             filter="ether proto 0x88b6 and inbound",
-            prn=lambda x: self.process_pkt(self, x, iface, pkt_sender),
+            prn=lambda x: self.process_pkt(self, x, iface),
             timeout=timeout,
         )
         if self.verbose:
