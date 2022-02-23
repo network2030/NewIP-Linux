@@ -1,6 +1,6 @@
 import time
 from scapy.all import *
-from New_IP.sender import sender
+from New_IP.sender import Sender
 from New_IP.newip_hdr import (
     ShippingSpec,
     NewIPOffset,
@@ -8,7 +8,7 @@ from New_IP.newip_hdr import (
 )
 
 
-class receiver:
+class Receiver:
     @staticmethod
     def process_pkt(self, pkt, iface):
         if pkt[NewIPOffset].contract_offset != pkt[NewIPOffset].payload_offset:
@@ -20,12 +20,12 @@ class receiver:
                 ping_contract = Ping(ship_payload)
                 if ping_contract[Ping].code == 0:
                     # Ping request packet
-                    
+
                     # Get the sending timestamp
                     snder_ts = ping_contract[Ping].timestamp
 
                     # Send a response back
-                    pong_sender = sender()
+                    pong_sender = Sender()
                     pong_sender.make_packet(
                         src_addr_type=ship_layer.dst_addr_type,
                         src_addr=ship_layer.dst,
@@ -37,8 +37,12 @@ class receiver:
                     pong_sender.send_packet(iface=iface)
                 else:
                     # Received a Ping reply
-                    rtt = round(time.time_ns() // 1000000 - ping_contract[Ping].timestamp, 4)
-                    print(f"PING reply from {ship_layer.src} time={rtt}ms ttl={ping_contract[Ping].hops}")
+                    rtt = round(
+                        time.time_ns() // 1000000 - ping_contract[Ping].timestamp, 4
+                    )
+                    print(
+                        f"PING reply from {ship_layer.src} time={rtt}ms ttl={ping_contract[Ping].hops}"
+                    )
 
         # print('Received Payload at ' + self.node.name + ' :')
         # if (self.verbose):
