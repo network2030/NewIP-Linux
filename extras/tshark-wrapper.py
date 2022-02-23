@@ -7,7 +7,6 @@ class arg_parser:
         self.set_args()
         self.parse_args()
         
-
     def set_args(self):
         self.parser = argparse.ArgumentParser()
 
@@ -18,18 +17,14 @@ class arg_parser:
                             required=True,
                             help="Pcap path")
 
-
     def parse_args(self):
         args = self.parser.parse_args()
-
         self.tshark = args.tshark_path
         self.pcap = args.pcap_path
 
 args = arg_parser()
 tshark_path = args.tshark
 pcap_path = args.pcap
-# tshark_path = '../wireshark-ninja/run/tshark'
-# pcap_path = 'pcap/h2_r2.pcap'
 
 os.system (f'{tshark_path} -r {pcap_path} -T json > tshark.json')
 os.system (f'{tshark_path} -r {pcap_path} > tshark.txt')
@@ -40,16 +35,18 @@ res_file = open('tshark.txt')
 result_list = res_file.readlines()
 
 for i in range(len(result_list)):
-    min_delay = ""
-    max_delay = ""
-    payload = ""
     try:
         min_delay = data[i]['_source']['layers']['New IP Packet']['Latency Based Forwarding Contract']['newip.lbfcontract.min_delay']
         max_delay = data[i]['_source']['layers']['New IP Packet']['Latency Based Forwarding Contract']['newip.lbfcontract.max_delay']
+        experienced_delay = data[i]['_source']['layers']['New IP Packet']['Latency Based Forwarding Contract']['newip.lbfcontract.delay_exp']
+        experienced_delay = str(float (experienced_delay)/10)
         payload = bytes.fromhex(str(data[i]['_source']['layers']['data']['data.data'].replace(":","")[0:16])).decode('utf-8')
     except:
         min_delay = ""
+        max_delay = ""
+        experienced_delay = ""
+        payload = ""
     
     split_list = result_list[i].split("New IP",1)
-    result_list[i] = split_list[0] + " min delay: " + min_delay + " max delay: " + max_delay + " payload: " + payload + " " + split_list[1]
+    result_list[i] = split_list[0] + " lbf.min: " + min_delay + "ms lbf.max: " + max_delay +"ms lbf.exp: " + experienced_delay + "ms payload: " + payload + " " + split_list[1]
     print(result_list[i])
