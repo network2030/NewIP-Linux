@@ -229,9 +229,9 @@ class lbf_forwarder:
         # pkt_fill(self.count, self.size):      // TODO check this
         self.src_addr = self.netObj.info_dict[self.src][self.src_addr_type]
         self.dst_addr = self.netObj.info_dict[self.dst][self.dst_addr_type]
-        self.sender = sender()
         
         with self.srcNode:
+            self.sender = sender()
             if self.useTcpReplay:
                 os.system (f'tc qdisc replace dev {self.srcIf} root pfifo')
             for index in range(self.pktCount):

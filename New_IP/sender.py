@@ -1,7 +1,14 @@
 import time
 from scapy.all import *
 from New_IP.newip_hdr import LatencyBasedForwarding, ShippingSpec, NewIPOffset, MaxDelayForwarding, Ping
+from enum import Enum 
+from nest.engine import exec_subprocess
 
+class NewIPAtype(Enum):
+   NEWIP_V4  = 0
+   NEWIP_V6  = 1
+   NEWIP_8b  = 2
+   NEWIP_16b = 3
 
 class sender:
     def __init__(self):
@@ -9,6 +16,38 @@ class sender:
         conf.route6.resync()
         self.contracts = None
         self.last_packet_ts = -1
+        self.mac_broadcast = "ff:ff:ff:ff:ff:ff"
+        self.mac_localhost = "00:00:00:00:00:00"
+
+    def get_gw_mac(self, src_iface, dst, dst_addr_type):
+        src_mac = None
+        gw = None
+        dst_mac = None
+
+        src_mac = get_if_hwaddr(src_iface)
+        if dst_addr_type == NewIPAtype.NEWIP_V4.value:
+            gw = conf.route.route(dst)
+            dst_mac = getmacbyip(gw[2])
+        elif dst_addr_type == NewIPAtype.NEWIP_V6.value:
+            gw = conf.route6.route(dst)
+            dst_mac = getmacbyip6 (gw[2])
+
+        # Fallback for populating mac address
+
+        if (src_mac == self.mac_localhost or src_mac is None):
+            get_src_mac_cmd = f"ip -o link | grep \"{src_iface}\" | awk '{{print $18}}'"
+            src_mac = exec_subprocess(get_src_mac_cmd, output=True, shell=True)
+
+        if (dst_mac == self.mac_broadcast or dst_mac is None):
+            if dst_addr_type == NewIPAtype.NEWIP_V6:
+                proto = "-6"
+            else:
+                proto = "-4"
+            get_neighbor = f'ip {proto} neigh show default dev {src_iface}'
+            value        = exec_subprocess(get_neighbor, output=True)
+            dst_mac = value.split()[2]
+
+        return src_mac, dst_mac
 
     def make_packet(self, src_addr_type, src_addr, dst_addr_type, dst_addr, content=""):
         self.content = content
@@ -69,18 +108,8 @@ class sender:
         self.pkt[NewIPOffset].payload_offset = self.pkt[NewIPOffset].shipping_offset + \
             len(self.ship) + (len(self.contracts) if  self.contracts else 0)
 
-        # Populate src mac
-        self.pkt[Ether].src = get_if_hwaddr(iface)
-        # Populate dst mac
-        gw = None
-        if self.pkt[ShippingSpec].dst_addr_type == 0:
-            gw = conf.route.route(self.pkt[ShippingSpec].dst)
-        elif self.pkt[ShippingSpec].dst_addr_type == 1:
-            gw = conf.route6.route(self.pkt[ShippingSpec].dst)
-        if self.pkt[ShippingSpec].dst_addr_type == 0:
-            self.pkt[Ether].dst = getmacbyip(gw[2])
-        elif self.pkt[ShippingSpec].dst_addr_type == 1:
-            self.pkt[Ether].dst = getmacbyip6(gw[2])
+        # Populate mac
+        self.pkt[Ether].src, self.pkt[Ether].dst = self.get_gw_mac(iface, self.pkt[ShippingSpec].dst, self.pkt[ShippingSpec].dst_addr_type)
 
         if show_pkt:
             self.show_packet()
