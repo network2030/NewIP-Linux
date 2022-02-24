@@ -4,7 +4,7 @@ import string
 import time
 import os
 from New_IP.setup import Setup
-from New_IP.sender import Sender
+from New_IP.sender import Sender, LegacyIpSender
 from New_IP.newip_hdr import LatencyBasedForwarding, Ping
 from datetime import datetime
 
@@ -80,7 +80,7 @@ class lbf_forwarder:
                         nodelist=self.pcapNodeList,
                         dir_name=self.pcapDirName,
                     )
-
+            # handle legacy ip receive
             self.netObj.start_receiver(
                 timeout=self.timeout, nodeList=[self.dstNode], verbose=recVerbose
             )
@@ -130,6 +130,13 @@ class lbf_forwarder:
             action="store",
             nargs="*",
             help="Use lbf contract with min and max delay. usage -lbf min_delay max_delay",
+        )
+        self.parser.add_argument(
+            "--legacy_ip",
+            "-li",
+            action="store_true",
+            default=False,
+            help="Send a legacy packet to destination",
         )
         self.parser.add_argument(
             "--timeout",
@@ -253,6 +260,7 @@ class lbf_forwarder:
 
         self.ping = args.ping
         self.lbfList = args.lbf_contract
+        self.legacy_ip = args.legacy_ip
         self.timeout = args.timeout
         self.showPacket = args.show_packet
         self.pktCount = args.pkt_count
@@ -319,29 +327,45 @@ class lbf_forwarder:
         self.sender.set_contract ([ping_contract])
         # self.sender.insert_contract("ping_contract", params=[0, sending_ts])
 
+    def create_legacyip_pkt(self, content):
+        self.sender.make_packet(
+            self.src_addr_type,
+            self.src_addr,
+            self.dst_addr_type,
+            self.dst_addr,
+            content,
+        )
+
     def start_forwarder(self):
         # pkt_fill(self.count, self.size):      // TODO check this
         self.src_addr = self.netObj.info_dict[self.src][self.src_addr_type]
         self.dst_addr = self.netObj.info_dict[self.dst][self.dst_addr_type]
 
-        if self.ping:
-            self.netObj.start_receiver(
-                timeout=self.timeout, nodeList=[self.srcNode], verbose=True
-            )
+        if self.legacy_ip:
+            with self.srcNode:
+                self.sender = LegacyIpSender()
+                for idx in range(self.pktCount):
+                    self.create_legacyip_pkt(idx)
+                    self.sender.send_packet(iface=self.srcIf, show_pkt=self.showPacket)
+        else:
+            if self.ping:
+                self.netObj.start_receiver(
+                    timeout=self.timeout, nodeList=[self.srcNode], verbose=True
+                )
 
-        with self.srcNode:
-            self.sender = Sender()
-            if self.useTcpReplay:
-                os.system(f"tc qdisc replace dev {self.srcIf} root pfifo")
+            with self.srcNode:
+                self.sender = Sender()
+                if self.useTcpReplay:
+                    os.system(f"tc qdisc replace dev {self.srcIf} root pfifo")
 
-            for index in range(self.pktCount):
-                if self.ping:
-                    self.create_ping_pkt()
-                else:
-                    payload = self.pkt_fill(index)
-                    self.create_lbf_pkt(payload)
+                for index in range(self.pktCount):
+                    if self.ping:
+                        self.create_ping_pkt()
+                    else:
+                        payload = self.pkt_fill(index)
+                        self.create_lbf_pkt(payload)
 
-                self.sender.send_packet(iface=self.srcIf, show_pkt=self.showPacket)
+                    self.sender.send_packet(iface=self.srcIf, show_pkt=self.showPacket)
 
     def replay(self):
         if self.pcap == "":

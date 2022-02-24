@@ -11,42 +11,48 @@ from New_IP.newip_hdr import (
 class Receiver:
     @staticmethod
     def process_pkt(self, pkt, iface):
-        if pkt[NewIPOffset].contract_offset != pkt[NewIPOffset].payload_offset:
-            # Contract exists
-            ship_layer = ShippingSpec(pkt[Raw].load)
-            ship_payload = ship_layer[Raw].load
-            # Check the type of contract
-            if bytes(ship_payload)[:2] == b"\x00\x03":
-                ping_contract = Ping(ship_payload)
-                if ping_contract[Ping].code == 0:
-                    # Ping request packet
+        if pkt[Ether].type == 0x0800:
+            # IPv4
+            pass
+        elif pkt[Ether].type == 0x86DD:
+            # IPv6
+            pass
+        elif pkt[Ether].type == 0x88B6:
+            # NEW IP
+            if pkt[NewIPOffset].contract_offset != pkt[NewIPOffset].payload_offset:
+                # Contract exists
+                ship_layer = ShippingSpec(pkt[Raw].load)
+                ship_payload = ship_layer[Raw].load
+                # Check the type of contract
+                if bytes(ship_payload)[:2] == b"\x00\x03":
+                    ping_contract = Ping(ship_payload)
+                    if ping_contract[Ping].code == 0:
+                        # Ping request packet
 
-                    # Get the sending timestamp
-                    snder_ts = ping_contract[Ping].timestamp
+                        # Get the sending timestamp
+                        snder_ts = ping_contract[Ping].timestamp
 
-                    # Send a response back
-                    pong_sender = Sender()
-                    pong_sender.make_packet(
-                        src_addr_type=ship_layer.dst_addr_type,
-                        src_addr=ship_layer.dst,
-                        dst_addr_type=ship_layer.src_addr_type,
-                        dst_addr=ship_layer.src,
-                        content="PONG",
-                    )
-                    pong_sender.insert_contract("ping_contract", params=[1, snder_ts])
-                    pong_sender.send_packet(iface=iface)
-                else:
-                    # Received a Ping reply
-                    rtt = round(
-                        time.time_ns() // 1000000 - ping_contract[Ping].timestamp, 4
-                    )
-                    print(
-                        f"PING reply from {ship_layer.src} time={rtt}ms ttl={ping_contract[Ping].hops}"
-                    )
-
-        # print('Received Payload at ' + self.node.name + ' :')
-        # if (self.verbose):
-        #     print(pkt[Raw].load)
+                        # Send a response back
+                        pong_sender = Sender()
+                        pong_sender.make_packet(
+                            src_addr_type=ship_layer.dst_addr_type,
+                            src_addr=ship_layer.dst,
+                            dst_addr_type=ship_layer.src_addr_type,
+                            dst_addr=ship_layer.src,
+                            content="PONG",
+                        )
+                        pong_sender.insert_contract(
+                            "ping_contract", params=[1, snder_ts]
+                        )
+                        pong_sender.send_packet(iface=iface)
+                    else:
+                        # Received a Ping reply
+                        rtt = round(
+                            time.time_ns() // 1000000 - ping_contract[Ping].timestamp, 4
+                        )
+                        print(
+                            f"PING reply from {ship_layer.src} time={rtt}ms ttl={ping_contract[Ping].hops}"
+                        )
 
     def __init__(self, node, verbose=True):
         self.verbose = verbose
@@ -60,7 +66,7 @@ class Receiver:
 
         pkts = sniff(
             iface=iface,
-            filter="ether proto 0x88b6 and inbound",
+            filter="((ether proto 0x88b6) or (ip proto 254)) and inbound",
             prn=lambda x: self.process_pkt(self, x, iface),
             timeout=timeout,
         )

@@ -1,4 +1,3 @@
-import time
 from scapy.all import *
 from New_IP.newip_hdr import (
     LatencyBasedForwarding,
@@ -10,6 +9,9 @@ from New_IP.newip_hdr import (
 from enum import Enum
 from nest.engine import exec_subprocess
 
+BROADCAST_MAC_ADDR = "ff:ff:ff:ff:ff:ff"
+LOCALHOST_MAC_ADDR = "00:00:00:00:00:00"
+
 
 class NewIPAtype(Enum):
     NEWIP_V4 = 0
@@ -18,43 +20,42 @@ class NewIPAtype(Enum):
     NEWIP_16b = 3
 
 
+def get_gw_mac(src_iface, dst, dst_addr_type):
+    src_mac = None
+    gw = None
+    dst_mac = None
+
+    src_mac = get_if_hwaddr(src_iface)
+    if dst_addr_type == NewIPAtype.NEWIP_V4.value:
+        gw = conf.route.route(dst)
+        dst_mac = getmacbyip(gw[2])
+    elif dst_addr_type == NewIPAtype.NEWIP_V6.value:
+        gw = conf.route6.route(dst)
+        dst_mac = getmacbyip6(gw[2])
+
+    # Fallback for populating mac address
+
+    if src_mac == LOCALHOST_MAC_ADDR or src_mac is None:
+        get_src_mac_cmd = f"ip -o link | grep \"{src_iface}\" | awk '{{print $18}}'"
+        src_mac = exec_subprocess(get_src_mac_cmd, output=True, shell=True)
+
+    if dst_mac == BROADCAST_MAC_ADDR or dst_mac is None:
+        if dst_addr_type == NewIPAtype.NEWIP_V6:
+            proto = "-6"
+        else:
+            proto = "-4"
+        get_neighbor = f"ip {proto} neigh show default dev {src_iface}"
+        value = exec_subprocess(get_neighbor, output=True)
+        dst_mac = value.split()[2]
+
+    return src_mac, dst_mac
+
+
 class Sender:
     def __init__(self):
         conf.route.resync()
         conf.route6.resync()
         self.contracts = None
-        self.mac_broadcast = "ff:ff:ff:ff:ff:ff"
-        self.mac_localhost = "00:00:00:00:00:00"
-
-    def get_gw_mac(self, src_iface, dst, dst_addr_type):
-        src_mac = None
-        gw = None
-        dst_mac = None
-
-        src_mac = get_if_hwaddr(src_iface)
-        if dst_addr_type == NewIPAtype.NEWIP_V4.value:
-            gw = conf.route.route(dst)
-            dst_mac = getmacbyip(gw[2])
-        elif dst_addr_type == NewIPAtype.NEWIP_V6.value:
-            gw = conf.route6.route(dst)
-            dst_mac = getmacbyip6(gw[2])
-
-        # Fallback for populating mac address
-
-        if src_mac == self.mac_localhost or src_mac is None:
-            get_src_mac_cmd = f"ip -o link | grep \"{src_iface}\" | awk '{{print $18}}'"
-            src_mac = exec_subprocess(get_src_mac_cmd, output=True, shell=True)
-
-        if dst_mac == self.mac_broadcast or dst_mac is None:
-            if dst_addr_type == NewIPAtype.NEWIP_V6:
-                proto = "-6"
-            else:
-                proto = "-4"
-            get_neighbor = f"ip {proto} neigh show default dev {src_iface}"
-            value = exec_subprocess(get_neighbor, output=True)
-            dst_mac = value.split()[2]
-
-        return src_mac, dst_mac
 
     def make_packet(self, src_addr_type, src_addr, dst_addr_type, dst_addr, content=""):
         self.content = content
@@ -143,20 +144,49 @@ class Sender:
         )
 
         # Populate mac
-        self.pkt[Ether].src, self.pkt[Ether].dst = self.get_gw_mac(
+        self.pkt[Ether].src, self.pkt[Ether].dst = get_gw_mac(
             iface, self.pkt[ShippingSpec].dst, self.pkt[ShippingSpec].dst_addr_type
         )
 
         if show_pkt:
-            self.show_packet()
+            show_packet(self.pkt)
 
         sendp(self.pkt, iface=iface, verbose=False, count=count)
         self.contracts = None
 
-    def show_packet(self):
-        print("=" * 40)
-        print("at sender egress")
-        print("-" * 40)
-        self.pkt.show()
-        print("=" * 40)
-        print()
+
+class LegacyIpSender:
+    def __init__(self):
+        self.ship = None
+
+    def make_packet(self, src_addr_type, src_addr, dst_addr_type, dst_addr, content=""):
+        self.content = str(content)
+        self.ship = IP(dst=dst_addr, src=src_addr, proto=254)
+
+    def send_packet(self, iface, show_pkt=False, count=1):
+        self.pkt = Ether() / self.ship / self.content
+
+        # Populate mac
+        dst_addr_type = 4
+        if self.pkt[IP].version == 6:
+            dst_addr_type = NewIPAtype.NEWIP_V6.value
+        else:
+            dst_addr_type = NewIPAtype.NEWIP_V4.value
+
+        self.pkt[Ether].src, self.pkt[Ether].dst = get_gw_mac(
+            iface, self.pkt[IP].dst, dst_addr_type
+        )
+
+        if show_pkt:
+            show_packet(self.pkt)
+
+        sendp(self.pkt, iface=iface, verbose=False, count=count)
+
+
+def show_packet(pkt):
+    print("=" * 40)
+    print("at sender egress")
+    print("-" * 40)
+    pkt.show()
+    print("=" * 40)
+    print()
