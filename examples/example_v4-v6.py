@@ -7,7 +7,6 @@ setup_obj.start_receiver()
 
 with setup_obj.h1:
     sender_obj = Sender()
-    delay = 500
 
     # IPv4 to IPv6
     sender_obj.make_packet(
@@ -19,4 +18,4 @@ with setup_obj.h1:
     )
     sender_obj.send_packet(iface="h1_r1", show_pkt=True)
 
-setup_obj.show_stats()
+# setup_obj.show_stats()
