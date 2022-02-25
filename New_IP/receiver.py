@@ -35,9 +35,9 @@ class Receiver:
             )
             ship_payload = ship_layer[Raw].load
 
-            if pkt[NewIPOffset].contract_offset != pkt[NewIPOffset].payload_offset:
+            if pkt[NewIPOffset].contract_offset != 0:
                 # Contract exists
-              
+
                 # Check the type of contract
                 if bytes(ship_payload)[:2] == b"\x00\x03":
                     # ping contract
@@ -82,7 +82,7 @@ class Receiver:
                         f"{lbf_contract.experienced_delay}"
                     )
                     pkt_details = f"{pkt_details} contract:lbf [{lbf_params}]"
-                print(pkt_details)
+            print(pkt_details)
 
     def __init__(self, node, verbose=True):
         self.verbose = verbose
