@@ -323,7 +323,7 @@ class lbf_forwarder:
             self.src_addr_type, self.src_addr, self.dst_addr_type, self.dst_addr, "PING"
         )
         sending_ts = time.time_ns() // 1000000
-        ping_contract = Ping(code = 0, Timestamp = sending_ts)
+        ping_contract = Ping(code=0, timestamp=sending_ts)
         self.sender.set_contract ([ping_contract])
         # self.sender.insert_contract("ping_contract", params=[0, sending_ts])
 
