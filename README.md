@@ -2,38 +2,74 @@
 
 ## Setup
 
-This repository uses [libbpf](https://github.com/libbpf/libbpf/) as a git-submodule. After cloning, run:
-
-```bash
-git submodule update --init
+### Machine details
+```
+OS: Ubuntu 21.10
+Kernel-Version: 5.13.0-23-generic
+Python Version: 3.9.7
+ip -V : ip utility, iproute2-5.9.0, libbpf 0.4.0
+ping -V: ping from iputils 20210202
+```
+### Preliminary steps
+```
+sudo apt update
+sudo apt upgrade
+sudo apt install git python3-pip
 ```
 
-[nest](https://gitlab.com/nitk-nest/nest/-/blob/master/INSTALL.md) python package is used to help setup network topologies and populate routing tables. You can follow the installation instructions [here](https://gitlab.com/nitk-nest/nest/-/blob/master/INSTALL.md)
-
-Python package [scapy](https://scapy.net/) is required for New-IP packet generation which can installed with:
-```bash
-sudo apt install python3-scapy
+### Install XDP
 ```
-Dependencies for XDP can be installed by going through [this document](https://github.com/xdp-project/xdp-tutorial/blob/master/setup_dependencies.org)
+sudo apt install clang llvm libelf-dev libpcap-dev gcc-multilib build-essential
+sudo apt install linux-tools-$(uname -r)
+sudo apt install linux-headers-$(uname -r)
+sudo apt install linux-tools-common linux-tools-generic
+```
+
+### Install quagga
+```
+sudo apt install quagga quagga-doc
+```
+
+### New IP
+Disable secure boot to install kernel modules
+```
+sudo apt install python3-scapy flex bison
+git clone https://github.com/mohittahiliani/New-IP
+cd New-IP
+sudo python3 -m pip install -e . 
+```
+
+### Run example
+```
+cd examples
+sudo python3 example_lbf.py
+```
+
+[nest](https://gitlab.com/nitk-nest/nest/-/blob/master/INSTALL.md) python package is used to help setup network topologies and populate routing tables.
+
+Python package [scapy](https://scapy.net/) is required for New-IP packet generation
 
 ## Running
 
-To run an example based on the nest topology, just run:
+To run an example with IPv4 source and IPv6 dst, just run:
 
 ```bash
 sudo python3 example_v4-v6.py
 ```
 
-from the home directory. This will compile the necessary xdp programs as well.
+from the examples directory. This will compile the necessary xdp programs as well for the first run.
 
 ## Provided examples
+- example_v4-v4.py: Sends packet from IPv4 address to IPv4 address
 - example_v4-v6.py: Sends packet from IPv4 address to IPv6 address.
 - example_v4-8bit.py: Sends packet from IPv4 address to 8bit address.
 - example_max-latency.py: Sends a packet with LBF contract with just the max latency of 800ms.
 - example_lbf.py: Sends a packet with LBF contract with min latency 500ms and max latency 800ms.
+- example_legacy.py: Sends legacy packets
+- example_ping.py: Runs New IP's Ping contract based ping
+- lbf_forwarder.py: CLI based Application with lots of features. For help ```sudo python3 lbf_forwarder.py --help```
 
 ## Wireshark Setup
-Note: Uncomment line number 22 in receiver.py to enable pcap generation
 
 Steps for New IP Wireshark:
 1. Install Git:
