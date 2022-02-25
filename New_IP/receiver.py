@@ -5,12 +5,17 @@ from New_IP.newip_hdr import (
     ShippingSpec,
     NewIPOffset,
     Ping,
+    LatencyBasedForwarding,
 )
+
+
+ADDR_TYPES = {0: "ipv4", 1: "ipv6", 2: "8bit"}
 
 
 class Receiver:
     @staticmethod
     def process_pkt(self, pkt, iface):
+
         if pkt[Ether].type == 0x0800:
             # IPv4
             pass
@@ -19,14 +24,28 @@ class Receiver:
             pass
         elif pkt[Ether].type == 0x88B6:
             # NEW IP
+
+            ship_layer = ShippingSpec(pkt[Raw].load)
+            pkt_details = (
+                f"sa:{ship_layer.src} "
+                f"st:{ADDR_TYPES[ship_layer.src_addr_type]} "
+                "<--> "
+                f"da:{ship_layer.dst} "
+                f"dt:{ADDR_TYPES[ship_layer.dst_addr_type]}"
+            )
+            ship_payload = ship_layer[Raw].load
+
             if pkt[NewIPOffset].contract_offset != pkt[NewIPOffset].payload_offset:
                 # Contract exists
-                ship_layer = ShippingSpec(pkt[Raw].load)
-                ship_payload = ship_layer[Raw].load
+              
                 # Check the type of contract
                 if bytes(ship_payload)[:2] == b"\x00\x03":
+                    # ping contract
                     ping_contract = Ping(ship_payload)
-                    if ping_contract[Ping].code == 0:
+                    ping_code = ping_contract[Ping].code
+                    pkt_details = f"{pkt_details} contract:ping [{ping_code}]"
+
+                    if ping_code == 0:
                         # Ping request packet
 
                         # Get the sending timestamp
@@ -53,6 +72,17 @@ class Receiver:
                         print(
                             f"PING reply from {ship_layer.src} time={rtt}ms ttl={ping_contract[Ping].hops}"
                         )
+                else:
+                    # lbf contract
+                    lbf_layer = LatencyBasedForwarding(ship_payload)
+                    lbf_contract = lbf_layer[LatencyBasedForwarding]
+                    lbf_params = (
+                        f"{lbf_contract.min_delay}, "
+                        f"{lbf_contract.max_delay}, "
+                        f"{lbf_contract.experienced_delay}"
+                    )
+                    pkt_details = f"{pkt_details} contract:lbf [{lbf_params}]"
+                print(pkt_details)
 
     def __init__(self, node, verbose=True):
         self.verbose = verbose
