@@ -159,7 +159,7 @@ class LegacyIpSender:
     def __init__(self):
         self.ship = None
 
-    def make_packet(self, src_addr_type, src_addr, dst_addr_type, dst_addr, content=""):
+    def make_packet(self, src_addr, dst_addr, content=""):
         self.content = str(content)
         self.ship = IP(dst=dst_addr, src=src_addr, proto=254)
 
