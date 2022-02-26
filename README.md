@@ -51,6 +51,14 @@ Python package [scapy](https://scapy.net/) is required for New-IP packet generat
 
 ## Running
 
+[lbf_forwarder.py](./examples/lbf_forwarder.py) provides a CLI interface with lots of features. 
+To list all the options, run
+```bash
+sudo python3 lbf_forwarder.py --help
+```
+
+Individual examples to demonstrate the features are also available in the [examples](./examples/) directory
+
 To run an example with IPv4 source and IPv6 dst, just run:
 
 ```bash
@@ -67,48 +75,44 @@ from the examples directory. This will compile the necessary xdp programs as wel
 - example_lbf.py: Sends a packet with LBF contract with min latency 500ms and max latency 800ms.
 - example_legacy.py: Sends legacy packets
 - example_ping.py: Runs New IP's Ping contract based ping
-- lbf_forwarder.py: CLI based Application with lots of features. For help ```sudo python3 lbf_forwarder.py --help```
 
-## Wireshark Setup
+## Packet Capture Analysis
 
-Steps for New IP Wireshark:
-1. Install Git:
-```bash
-sudo apt install git
-```
+Steps to build and run Wireshark with New IP support:
 
-2. Install source repository
-```bash
-git clone https://gitlab.com/ameyanrd/wireshark.git
-```
+1. Get the source
+    ```bash
+    wget https://gitlab.com/ameyanrd/wireshark/-/archive/newip/wireshark-newip.zip
+    unzip wireshark-newip.zip
+    ```
 
-3. Switch the newip branch
-```bash
-cd wireshark
-git switch newip
-```
+1. Make wireshark-ninja build directory
+    ```bash
+    mkdir wireshark-ninja
+    cd wireshark-ninja
+    ```
 
-4. Make wireshark-ninja repo
-```bash
-cd ../
-mkdir wireshark-ninja
-cd wireshark-ninja
-```
+1. Install dependencies
+    ```bash
+    sudo apt install cmake ninja-build gcc g++ libglib2.0-dev libpcap-dev libgcrypt20-dev libc-ares-dev flex bison qttools5-dev qtbase5-dev qtmultimedia5-dev
+    ```
 
-5. Install dependencies
-```bash
-sudo apt install cmake ninja-build gcc g++ libglib2.0-dev libpcap-dev libgcrypt20-dev libc-ares-dev flex bison qttools5-dev qtbase5-dev qtmultimedia5-dev
-```
+1. cmake and ninja
+    ```bash
+    cmake -G Ninja ../wireshark-newip
+    ninja
+    ```
 
-6. cmake and ninja
-```bash
-cmake -G Ninja ../wireshark
-ninja
-```
+1. Open the New IP capture
+    ```bash
+    ./run/wireshark <pcap filename>
+    ```
+    or
+    ```bash
+    ./run/tshark -r <pcap_filename>
+    ```
 
-7. Open the New IP capture
-```bash
-./run/wireshark <pcap filename>
-```
+<hr>
+
 Sample Wireshark result and pcap available here:
 https://drive.google.com/drive/folders/1aZUx08u1NWxoJv4vY4X5rR-M-PUUI0pK?usp=sharing
