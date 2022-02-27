@@ -1,3 +1,26 @@
+# This program sends ping contract packet from the source
+# to the destination provided by the user
+# by default the the src is h1 and dst is h2
+# the default packet count is 1
+# the default source and destination type is ipv4
+ 
+ 
+ 
+ 
+ 
+# TOPOLOGY
+#
+#               r2 ---- h2
+#              /
+#             /
+#   h1 ---- r1
+#             \
+#              \
+#               r3 ---- h3
+#
+####
+
+
 import argparse
 import time
 from New_IP.setup import Setup

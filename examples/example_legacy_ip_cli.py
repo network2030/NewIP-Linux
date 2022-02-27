@@ -1,3 +1,24 @@
+# This program sends legacy IP packet from the source
+# to the destination provided by the user
+# by default the the src is h1 and dst is h2
+# the default packet count is 1
+# the default source and destination type is ipv4
+# the pcap capture can be enabled as per the user preference 
+ 
+ 
+ 
+# TOPOLOGY
+#
+#               r2 ---- h2
+#              /
+#             /
+#   h1 ---- r1
+#             \
+#              \
+#               r3 ---- h3
+#
+####
+
 import argparse
 import os
 import random
