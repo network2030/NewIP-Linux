@@ -1,3 +1,20 @@
+# This program sends the New-IP packet from h1 to h2
+# The source address type is ipv4
+# The destination address type is 8bit
+
+
+# TOPOLOGY
+#
+#               r2 ---- h2
+#              /
+#             /
+#   h1 ---- r1
+#             \
+#              \
+#               r3 ---- h3
+#
+####
+
 from New_IP.setup import Setup
 from New_IP.sender import Sender
 

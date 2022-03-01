@@ -1,4 +1,24 @@
-# Sending LBF contract packet with only max delay as 800ms
+# This program sends the LBF contract packet from h1 to h2
+# with only max delay as 800ms
+# The source address type is ipv4
+# The destination address type is ipv6
+
+
+
+
+# TOPOLOGY
+#
+#               r2 ---- h2
+#              /
+#             /
+#   h1 ---- r1
+#             \
+#              \
+#               r3 ---- h3
+#
+####
+
+
 from New_IP.setup import Setup
 from New_IP.sender import Sender
 from New_IP.newip_hdr import LatencyBasedForwarding

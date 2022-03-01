@@ -1,3 +1,28 @@
+# This program sends New-IP, LBF contract, Legacy IP or Ping contract packet
+# from the source to the destination provider by the users
+# by default it sends New-IP packet
+# mixed flow traffic with multiple sender and receivers can be obtained
+# by default the the src is h1 and dst is h2
+# the default packet count is 1
+# the default source and destination type is ipv4
+ 
+ 
+ 
+ 
+ 
+# TOPOLOGY
+#
+#               r2 ---- h2
+#              /
+#             /
+#   h1 ---- r1
+#             \
+#              \
+#               r3 ---- h3
+#
+####
+
+
 import argparse
 import random
 import string
@@ -330,7 +355,7 @@ class lbf_forwarder:
             dst_addr,
             content,
         )
-        
+
         if self.lbfList != None:
             hops = self.netObj.info_dict[srcNode.name]["hops"][dstNode.name]
             self.lbfObj = LbfObj(self.min_delay, self.max_delay, hops)
