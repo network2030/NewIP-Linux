@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0-only
+# Copyright (c) 2019-2022 @rohit-mp @bhaskar792
+
 from nest.experiment import *
 from nest.topology import *
 from nest.routing.routing_helper import RoutingHelper

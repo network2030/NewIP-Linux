@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0-only
+# Copyright (c) 2019-2022 @kiranmak @rohit-mp @bhaskar792 @shashank68
+
 # This program sends New-IP, LBF contract, Legacy IP or Ping contract packet
 # from the source to the destination provider by the users
 # by default it sends New-IP packet

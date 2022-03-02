@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0-only
+# Copyright (c) 2019-2022 @rohit-mp @bhaskar792 @deeptadevkota
+
 # This program sends legacy IP packet from h1 to h2
 # The source address type is ipv4
 # The destination address type is ipv6

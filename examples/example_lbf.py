@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0-only
+# Copyright (c) 2019-2022 @rohit-mp @bhaskar792 @deeptadevkota
+
 # This program sends the LBF contract packet from h1 to h2
 # with min delay as 500ms and max delay as 800ms
 # it saves the pcap file generated at the sender's interface (h1_r1) in the pcap directory.

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0-only
+# Copyright (c) 2019-2022 @rohit-mp @bhaskar792 @deeptadevkota
+
 # This program sends legacy IP packet from the source
 # to the destination provided by the user
 # by default the the src is h1 and dst is h2
