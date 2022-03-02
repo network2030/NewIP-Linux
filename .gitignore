@@ -10,8 +10,8 @@ __pycache__/
 *.json
 *.txt
 xdp/libbpf/src/build
-xdp/basic-solutions/xdp_stats
-xdp/basic-solutions/xdp_loader
+xdp/loader/xdp_stats
+xdp/loader/xdp_loader
 xdp/newip_router/xdp_stats
 xdp/newip_router/xdp_loader
 xdp/newip_router/xdp_prog_user
