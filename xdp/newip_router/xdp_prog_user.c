@@ -1,4 +1,5 @@
-/* SPDX-License-Identifier: GPL-2.0 */
+/* SPDX-License-Identifier: GPL-2.0-only
+   Copyright (c) 2019-2022 @bhaskar792 @rohitmp */
 
 static const char *__doc__ = "XDP redirect helper\n"
 	" - Allows to populate/query tx_port and redirect_params maps\n";

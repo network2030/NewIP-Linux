@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: GPL-2.0-only
+   Copyright (c) 2019-2022 @rohitmp */
 #include <linux/bpf.h>
 #include <linux/in.h>
 #include <linux/pkt_cls.h>

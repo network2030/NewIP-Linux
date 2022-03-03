@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0-only
-# Copyright (c) 2019-2022 @rohit-mp @bhaskar792 @deeptadevkota
+# Copyright (c) 2019-2022 @deeptadevkota
 
 # This program sends ping contract packet from the source
 # to the destination provided by the user

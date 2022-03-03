@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0-only
-# Copyright (c) 2019-2022 @rohit-mp @bhaskar792 @deeptadevkota
+# Copyright (c) 2019-2022 @bhaskar792
 
 # This program sends the New-IP packet from h1 to h2
 # The source address type is ipv4
