@@ -1,37 +1,23 @@
-## Welcome to GitHub Pages
+## New IP on Linux (Proof of Concept)
 
-You can use the [editor on GitHub](https://github.com/network2030/NewIP-Linux/edit/gh-pages/index.md) to maintain and preview the content for your website in Markdown files.
+- Slides for the tutorial can be found here.
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+New IP-Linux sandbox is a lightweight packet processing environment that implements packet format as per specification defined in
 
-### Markdown
+- R. Li, K. Makhijani and L. Dong, "New IP: A Data Packet Framework to Evolve the Internet : Invited Paper," 2020 IEEE 21st International Conference on High Performance Switching and Routing (HPSR), 2020, pp. 1-8, doi:10.1109/HPSR48589.2020.9098996.
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
+- K. Makhijani and L. Dong, "Asymmetric Addressing Structures in Limited Domain Networks," 2021 IEEE 22nd International Conference on High Performance Switching and Routing (HPSR), 2021, pp. 1-7, doi:10.1109/HPSR52026.2021.9481811.
 
-```markdown
-Syntax highlighted code block
+New IP uses a simple [Network Stack Tester (NeST)] (https://nest.nitk.ac.in) environment based on network namespaces.
+- Shanthanu S. Rai, Narayan G., Dhanasekhar M., Leslie Monis, and Mohit P. Tahiliani. 2020. NeST: Network Stack Tester. In <i>Proceedings of the Applied Networking Research Workshop</i> (<i>ANRW '20</i>). Association for Computing Machinery, New York, NY, USA, 32–37. DOI:https://doi.org/10.1145/3404868.3406670
 
-# Header 1
-## Header 2
-### Header 3
 
-- Bulleted
-- List
+## Getting Started
 
-1. Numbered
-2. List
+[NeST] (https://nest.nitk.ac.in/docs/v0.4/index.html)
 
-**Bold** and _Italic_ and `Code` text
+[NewIP] (https://github.com/network2030/NewIP-Linux/blob/main/README.md)
 
-[Link](url) and ![Image](src)
-```
 
-For more details see [Basic writing and formatting syntax](https://docs.github.com/en/github/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax).
-
-### Jekyll Themes
-
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/network2030/NewIP-Linux/settings/pages). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
-
-### Support or Contact
-
-Having trouble with Pages? Check out our [documentation](https://docs.github.com/categories/github-pages-basics/) or [contact support](https://support.github.com/contact) and we’ll help you sort it out.
+### VM
+Download  pre-built VM from [here](TBD)
