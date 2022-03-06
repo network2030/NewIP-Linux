@@ -20,10 +20,10 @@ Location:  https://www.icin-conference.org/tutorials/
 
 - [New IP Overview - Part 1](https://github.com/network2030/NewIP-Linux/blob/ab0cbf5ebe328be039748ac68fdd8719deac0ff7/docs/New%20IP%20Tutorial%20--Part-1.pptx)
 - [Network Stack Tester - Part 2](https://github.com/network2030/NewIP-Linux/blob/ab0cbf5ebe328be039748ac68fdd8719deac0ff7/docs/New%20IP%20Tutorial%20--Part-2.pptx)
-- [Implementation and Demo - Part 3](https://github.com/network2030/NewIP-Linux/blob/ab0cbf5ebe328be039748ac68fdd8719deac0ff7/docs/New%20IP%20Tutorial%20--Part-3.pptx)
-- [Extensible Scenarios and Future Work - Part 4](https://github.com/network2030/NewIP-Linux/blob/ab0cbf5ebe328be039748ac68fdd8719deac0ff7/docs/New%20IP%20Tutorial%20--Part-4.pptx)
+- [Implementation and Demo - Part 3](docs/New%20IP%20Tutorial%20--Part-3.pptx)
+- [Extensible Scenarios and Future Work - Part 4](docs/New%20IP%20Tutorial%20--Part-4.pptx)
 
-[Single Deck](https://github.com/network2030/NewIP-Linux/blob/ab0cbf5ebe328be039748ac68fdd8719deac0ff7/docs/New%20IP%20Tutorial%20ICIN.pdf)
+[Single Deck](docs/New%20IP%20Tutorial%20ICIN.pdf)
 
 #### Repository
 
