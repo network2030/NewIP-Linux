@@ -28,7 +28,7 @@ Location:  https://www.icin-conference.org/tutorials/
 #### Repository
 
 https://github.com/network2030/NewIP-Linux
-use branch: icin_tut
+- use branch: [icin_tut](https://github.com/network2030/NewIP-Linux/tree/icin_tut)
 
 ## Getting Started
 
@@ -37,4 +37,5 @@ use branch: icin_tut
 [NewIP-Linux](https://github.com/network2030/NewIP-Linux/blob/main/README.md)
 
 ### VM
-Download  pre-built VM from [here](https://drive.google.com/drive/folders/1uof-qs2wgyl7aOU_f7PJKpNefmmtrXkE?usp=sharing)
+1. Download pre-built VM from [here](https://drive.google.com/drive/folders/1uof-qs2wgyl7aOU_f7PJKpNefmmtrXkE?usp=sharing)
+1. Ready to use Cloud VMs through ssh ([Instructions](https://docs.google.com/document/d/1WVCEnBaZavxaX8zWaXKuq77cEM6ZY1MBALQHSTlSLeE/edit?usp=sharing))
