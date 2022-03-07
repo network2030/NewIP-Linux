@@ -37,4 +37,4 @@ use branch: icin_tut
 [NewIP-Linux](https://github.com/network2030/NewIP-Linux/blob/main/README.md)
 
 ### VM
-Download  pre-built VM from [here](TBD)
+Download  pre-built VM from [here](https://drive.google.com/drive/folders/1uof-qs2wgyl7aOU_f7PJKpNefmmtrXkE?usp=sharing)
