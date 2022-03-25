@@ -605,8 +605,8 @@ static struct sk_buff *lbf_dequeue(struct Qdisc *sch)
 		{
 			void *contract = skb_network_header(skb) + newipoff->contract_offset;
 			struct latency_based_forwarding *lbf = (struct latency_based_forwarding*)contract;
-			lbf->experienced_delay += htons (q->stats.delay/100); // in 10 ^-4s
-			// printk ("updated experienced delay %lld", ntohs(lbf->experienced_delay));
+			lbf->experienced_delay = htons(ntohs(lbf->experienced_delay) + q->stats.delay/100); // in 10 ^-4s
+			printk ("updated experienced delay %lld", ntohs(lbf->experienced_delay));
 		}
 	}
 
