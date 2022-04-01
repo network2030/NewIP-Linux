@@ -21,10 +21,10 @@ class Receiver:
 
         if pkt[Ether].type == 0x0800:
             # IPv4
-            pass
+            print("legacy IPv4 packet received")
         elif pkt[Ether].type == 0x86DD:
             # IPv6
-            pass
+            print("Legacy IPv6 packet received")
         elif pkt[Ether].type == 0x88B6:
             # NEW IP
 

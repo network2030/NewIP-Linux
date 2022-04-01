@@ -36,6 +36,7 @@ from New_IP.setup import Setup
 from New_IP.sender import Sender, LegacyIpSender
 from New_IP.newip_hdr import LatencyBasedForwarding, Ping
 from datetime import datetime
+from lbf_forwarder_args import lbf_forwarder_args
 
 
 class LbfObj:
@@ -60,28 +61,27 @@ class lbf_forwarder:
     def __init__(self, min_delay=50, max_delay=60):
         self.min_delay = min_delay
         self.max_delay = max_delay
-        self.set_args()
-        self.parse_args()
+        self.args = lbf_forwarder_args()
         self.netObj = Setup()
         self.netObj.setup_topology()
         self.srcNode = []
-        for src in self.src:
+        for src in self.args.src:
             self.srcNode.append(self.netObj.info_dict[src]["node"])
         self.dstNode = []
-        for dst in self.dst:
+        for dst in self.args.dst:
             self.dstNode.append(self.netObj.info_dict[dst]["node"])
         recVerbose = True
-        if self.pcapAll or self.pcapDst or self.pcapInterfaceList or self.pcapNodeList or self.useTcpReplay:
+        if self.args.pcapAll or self.args.pcapDst or self.args.pcapInterfaceList or self.args.pcapNodeList or self.args.useTcpReplay:
             self.pcapDirName = datetime.now().strftime("%Y_%m_%d-%I:%M:%S_%p")
             try:
                 os.remove("./latest")
             except OSError:
                 pass
             os.symlink(self.pcapDirName, "./latest")
-        if self.pcap == "":
-            if self.useTcpReplay:
+        if self.args.pcap == "":
+            if self.args.useTcpReplay:
                 self.netObj.generate_pcap(
-                    timeout=self.timeout,
+                    timeout=self.args.timeout,
                     nodelist=self.srcNode,
                     dir_name=self.pcapDirName,
                 )
@@ -90,265 +90,46 @@ class lbf_forwarder:
                 self.gen_pcap()
 
             self.netObj.start_receiver(
-                timeout=self.timeout, nodeList=self.dstNode, verbose=recVerbose
+                timeout=self.args.timeout, nodeList=self.dstNode, verbose=recVerbose
             )
             self.start_forwarder()
 
-        if self.useTcpReplay:
+        if self.args.useTcpReplay:
             self.replay()
 
     def gen_pcap(self):
-        if self.pcapAll:
+        if self.args.pcapAll:
             self.netObj.generate_pcap(
-                        timeout=self.timeout, dir_name=self.pcapDirName
+                        timeout=self.args.timeout, dir_name=self.pcapDirName
                     )
-        elif self.pcapDst:
+        elif self.args.pcapDst:
             self.netObj.generate_pcap(
-                timeout=self.timeout,
+                timeout=self.args.timeout,
                 nodelist=self.dstNode,
                 dir_name=self.pcapDirName,
             )
-        elif self.pcapInterfaceList:
+        elif self.args.pcapInterfaceList:
             self.netObj.generate_pcap(
-                timeout=self.timeout,
-                interfaces=self.pcapInterfaceList,
+                timeout=self.args.timeout,
+                interfaces=self.args.pcapInterfaceList,
                 dir_name=self.pcapDirName,
             )
-        elif self.pcapNodeList:
+        elif self.args.pcapNodeList:
             self.netObj.generate_pcap(
-                timeout=self.timeout,
-                nodelist=self.pcapNodeList,
+                timeout=self.args.timeout,
+                nodelist=self.args.pcapNodeList,
                 dir_name=self.pcapDirName,
             )
-
-    def set_args(self):
-        self.parser = argparse.ArgumentParser()
-        # Add long and short argument
-        # example -i h1_r1 -st 8b -dt 8b -da h1 -sa h3 -s 30  -c 10
-        # self.parser.add_argument("--interface", "-i", required=True,
-        #                     help="set source address type")               Not required as we are specifying the src host and we only have 1 interface
-        self.parser.add_argument("--ping", "-p", action="store_true", default=False)
-        self.parser.add_argument(
-            "--src-type",
-            "-st",
-            nargs="+",
-            default=["ipv4"],
-            help="set source address types",
-        )
-        self.parser.add_argument(
-            "--src",
-            "-sa",
-            nargs="+",
-            default=["h1"],
-            help="set source hosts",
-        )
-        self.parser.add_argument(
-            "--dst-type",
-            "-dt",
-            nargs="+",
-            default=["ipv4"],
-            help="set dst address types",
-        )
-        self.parser.add_argument(
-            "--dst",
-            "-da",
-            nargs="+",
-            default=["h2"],
-            help="set destination hosts",
-        )
-        self.parser.add_argument(
-            "--lbf-contract",
-            "-lbf",
-            nargs="*",
-            help="Use lbf contract with min and max delay. usage -lbf min_delay max_delay",
-        )
-        self.parser.add_argument(
-            "--legacy_ip",
-            "-li",
-            action="store_true",
-            default=False,
-            help="Send a legacy packet to destination",
-        )
-        self.parser.add_argument(
-            "--timeout",
-            "-t",
-            type=int,
-            default=10,
-            help="timeout for receiver and pcap capture",
-        )
-        self.parser.add_argument(
-            "--show-packet",
-            "-sp",
-            action="store_true",
-            default=False,
-            help="Show Packet",
-        )
-        self.parser.add_argument(
-            "--pkt-count", "-c", type=int, default=1, help="number of pkts to send"
-        )
-        self.parser.add_argument(
-            "--pkt-size", "-s", type=int, default=100, help="pkt size"
-        )
-        self.parser.add_argument(
-            "--pcap-file",
-            "-pf",
-            default="",
-            help="pcap file to be replayed, use with -tr",
-        )
-
-        self.parser.add_argument(
-            "--pcap-all",
-            "-pa",
-            action="store_true",
-            default=False,
-            help="Capture pcap for all nodes",
-        )
-        self.parser.add_argument(
-            "--pcap-dst",
-            "-pd",
-            action="store_true",
-            default=False,
-            help="Capture pcap for dst node",
-        )
-        self.parser.add_argument(
-            "--pcap-interface-list",
-            "-pil",
-            action="append",
-            default=None,
-            help="Capture packets on this list of interface",
-        )
-        self.parser.add_argument(
-            "--pcap-node-list",
-            "-pnl",
-            action="append",
-            default=None,
-            help="Capture packets on this list of nodes",
-        )
-
-        self.parser.add_argument(
-            "--tcp-replay",
-            "-tr",
-            action="store_true",
-            default=False,
-            help="Use tcp-replay to send the packets",
-        )
-        # self.parser.add_argument("--limit",    "-lmt",   type=int,
-        #                     default=100000,
-        #                     help="limit the number of packets to be sent, use with --tcp-replay=true")
-        self.parser.add_argument(
-            "--loop",
-            "-l",
-            type=int,
-            default=1,
-            help="loop through the pcap file, use with --tcp-replay=true",
-        )
-
-        self.group = self.parser.add_mutually_exclusive_group()
-        self.group.add_argument(
-            "--packets-per-sec",
-            "-pps",
-            type=int,
-            default=100,
-            help="send given number of packets per second, use with --tcp-replay=true",
-        )
-        self.group.add_argument(
-            "--Mbps",
-            "-mbps",
-            type=int,
-            default=0,
-            help="send at the specified rate in Mbps, use with --tcp-replay=true",
-        )
-        self.group.add_argument(
-            "--topspeed",
-            "-ts",
-            action="store_true",
-            default=False,
-            help="send at the maximum rate, use with --tcp-replay=true",
-        )
-
-        self.parser.add_argument(
-            "--statistics",
-            "-stats",
-            type=int,
-            default=10,
-            help="print stats after every given second, use with --tcp-replay=true",
-        )
-
-    def parse_args(self):
-        # Read arguments from the command line
-        args = self.parser.parse_args()
-        valid_address_types = ["ipv4", "ipv6", "8bit"]
-        self.src_addr_type = list(set(args.src_type))
-        for addr_type in self.src_addr_type:
-            if (addr_type not in valid_address_types):
-                self.parser.error ("src address should be from ipv4, ipv6 or 8bit")
-
-        self.dst_addr_type = args.dst_type
-        for addr_type in self.dst_addr_type:
-            if (addr_type not in valid_address_types):
-                self.parser.error ("dst address should be from ipv4, ipv6 or 8bit")
-
-        valid_hosts = ["h1", "h2", "h3"]
-        self.src = list(set(args.src))
-        for host in self.src:
-            if (host not in valid_hosts):
-                self.parser.error ("dst address should be from h1, h2 or h3")
-
-        self.dst = list(set(args.dst))
-        for host in self.dst:
-            if (host not in valid_hosts):
-                self.parser.error ("dst address should be from h1, h2 or h3")
-        if ((args.lbf_contract is not None) and ((len(args.lbf_contract) % 2) != 0)):
-            self.parser.error(
-                "Either give no values for contract, or multiple of two, not {}.".format(
-                    len(args.lbf_contract)
-                )
-            )
-
-        self.ping = args.ping
-        self.lbfList = args.lbf_contract
-        self.legacy_ip = args.legacy_ip
-        self.timeout = args.timeout
-        self.showPacket = args.show_packet
-        self.pktCount = args.pkt_count
-        self.pktSize = args.pkt_size
-        self.pcap = args.pcap_file
-
-        self.pcapAll = args.pcap_all
-        self.pcapDst = args.pcap_dst
-        self.pcapNodeList = args.pcap_node_list
-        self.pcapInterfaceList = args.pcap_interface_list
-
-        self.useTcpReplay = args.tcp_replay
-        # self.trLimit = args.limit
-        self.trLoop = args.loop
-        self.trPps = args.packets_per_sec
-        self.trMbps = args.Mbps
-        self.trTopspeed = args.topspeed
-        self.trStats = args.statistics
-
-        self.size = args.pkt_size
-        self.count = args.pkt_count
-
-        # print("Set src-type to %s" % args.src_type)
-        # print("Set dst-type to %s" % args.dst_type)
-        # print("Set src to %s" % args.src)
-        # print("Set dst to %s" % args.dst)
-        # print("Set size to %d" % args.pkt_size)
-        # print("Set cnt to %d" % args.pkt_count)
-
-        # TODO: rename setup_obj to active_topo
-
 
     def pkt_fill(self, index):
         START = "pkt# %d " % (index)
-        remaining = self.pktSize - len(START)
+        remaining = self.args.pktSize - len(START)
         chars = string.ascii_uppercase + string.digits
         return START + "".join(random.choice(chars) for _ in range(remaining))
 
-    def create_lbf_pkt(self, sender, srcNode, dstNode, content):
-        src_addr_type = random.choice(self.src_addr_type)
-        dst_addr_type = random.choice(self.dst_addr_type)
+    def create_lbf_pkt(self, sender, srcNode, dstNode, content, nolbf = False):
+        src_addr_type = random.choice(self.args.src_addr_type)
+        dst_addr_type = random.choice(self.args.dst_addr_type)
         src_addr = self.netObj.info_dict[srcNode.name][src_addr_type]
         dst_addr = self.netObj.info_dict[dstNode.name][dst_addr_type]
         sender.make_packet(
@@ -359,14 +140,14 @@ class lbf_forwarder:
             content,
         )
 
-        if self.lbfList != None:
+        if not nolbf and self.args.lbfList != None:
             hops = self.netObj.info_dict[srcNode.name]["hops"][dstNode.name]
             self.lbfObj = LbfObj(self.min_delay, self.max_delay, hops)
 
-            if self.lbfList != []:
-                rand_min_index = random.choice(range(0,len(self.lbfList),2))
-                min_delay = self.lbfList[rand_min_index]
-                max_delay = self.lbfList[rand_min_index + 1]
+            if self.args.lbfList != []:
+                rand_min_index = random.choice(range(0,len(self.args.lbfList),2))
+                min_delay = self.args.lbfList[rand_min_index]
+                max_delay = self.args.lbfList[rand_min_index + 1]
 
                 self.lbfObj.set_lbf_params(min_delay, max_delay, hops)
 
@@ -376,8 +157,8 @@ class lbf_forwarder:
             # self.sender.insert_contract("latency_based_forwarding", params)
 
     def create_ping_pkt(self, sender, srcNode, dstNode):
-        src_addr_type = random.choice(self.src_addr_type)
-        dst_addr_type = random.choice(self.dst_addr_type)
+        src_addr_type = random.choice(self.args.src_addr_type)
+        dst_addr_type = random.choice(self.args.dst_addr_type)
         src_addr = self.netObj.info_dict[srcNode.name][src_addr_type]
         dst_addr = self.netObj.info_dict[dstNode.name][dst_addr_type]
         sender.make_packet(
@@ -391,7 +172,7 @@ class lbf_forwarder:
         ping_contract = Ping(code= 0, timestamp=sending_ts)
         sender.set_contract([ping_contract])
     def create_legacyip_pkt(self, sender, srcNode, dstNode, content):
-        addr_type = self.src_addr_type
+        addr_type = self.args.src_addr_type
         if ("8bit" in addr_type):
             addr_type.remove("8bit")
         addr_type = random.choice(addr_type)
@@ -404,35 +185,38 @@ class lbf_forwarder:
         )
     def sender_process (self, srcNode):
         with srcNode:
-            if self.legacy_ip:
-                sender = LegacyIpSender()
-            else:
-                sender = Sender()
             dstNode = self.dstNode
             if (srcNode in dstNode):
                 dstNode.remove(srcNode)
             if dstNode:
                 srcIf = srcNode._interfaces[0].name
-                if self.useTcpReplay:
+                if self.args.useTcpReplay:
                     os.system(f"tc qdisc replace dev {srcIf} root pfifo")
 
-                for index in range(max(int(self.pktCount/len(self.src)),1)):
+                for index in range(max(int(self.args.pktCount/len(self.args.src)),1)):
                     rand_dst_node = random.choice(dstNode)
-
-                    if self.ping:
+                    packet_type = random.choice(self.args.packet_types)
+                    if packet_type == "li":
+                        sender = LegacyIpSender()
+                    else:
+                        sender = Sender()
+                    if packet_type == "ping":
                         self.create_ping_pkt(sender, srcNode, rand_dst_node)
-                    elif self.legacy_ip:
+                    elif packet_type == "li":
                         self.create_legacyip_pkt(sender,srcNode, rand_dst_node, index)
                     else:
                         payload = self.pkt_fill(index)
-                        self.create_lbf_pkt(sender, srcNode, rand_dst_node, payload)
+                        if packet_type == "nolbf":
+                            self.create_lbf_pkt(sender, srcNode, rand_dst_node, payload, nolbf = True)
+                        else:
+                            self.create_lbf_pkt(sender, srcNode, rand_dst_node, payload)
 
-                    sender.send_packet(iface=srcIf, show_pkt=self.showPacket)
+                    sender.send_packet(iface=srcIf, show_pkt=self.args.showPacket)
     
     def start_forwarder(self):
-        if self.ping:
+        if self.args.ping:
             self.netObj.start_receiver(
-                timeout=self.timeout, nodeList=self.srcNode, verbose=True
+                timeout=self.args.timeout, nodeList=self.srcNode, verbose=True
             )
         
         for srcNode in self.srcNode:
@@ -440,27 +224,27 @@ class lbf_forwarder:
             sender_proc.start()
     def tcp_replay_process(self, srcNode, srcIf, replayFile):
         with srcNode:
-            if self.trTopspeed:
+            if self.args.trTopspeed:
                 os.system(
-                    f"sudo timeout {self.timeout} tcpreplay --loop={self.trLoop} --stats={self.trStats} --topspeed -i {srcIf} {replayFile} "
+                    f"sudo timeout {self.args.timeout} tcpreplay --loop={self.args.trLoop} --stats={self.args.trStats} --topspeed -i {srcIf} {replayFile} "
                 )
-            elif self.trMbps:
+            elif self.args.trMbps:
                 os.system(
-                    f"sudo timeout {self.timeout} tcpreplay --loop={self.trLoop} --stats={self.trStats} --Mbps={self.trMbps} -i {srcIf} {replayFile} "
+                    f"sudo timeout {self.args.timeout} tcpreplay --loop={self.args.trLoop} --stats={self.args.trStats} --Mbps={self.args.trMbps} -i {srcIf} {replayFile} "
                 )
             else:
                 os.system(
-                    f"sudo timeout {self.timeout} tcpreplay --loop={self.trLoop} --stats={self.trStats} --pps={self.trPps} -i {srcIf} {replayFile} "
+                    f"sudo timeout {self.args.timeout} tcpreplay --loop={self.args.trLoop} --stats={self.args.trStats} --pps={self.args.trPps} -i {srcIf} {replayFile} "
                 )
 
     def replay(self):
-        self.netObj.start_receiver(timeout=self.timeout, nodeList=self.dstNode)
-        if self.pcap == "":
+        self.netObj.start_receiver(timeout=self.args.timeout, nodeList=self.dstNode)
+        if self.args.pcap == "":
             print("waiting for receiver processes to end...")
-            time.sleep(self.timeout)
+            time.sleep(self.args.timeout)
         for srcNode in self.srcNode:
             srcIf = srcNode._interfaces[0].name
-            if self.pcap == "":
+            if self.args.pcap == "":
                 os.system(
                     f"cp {self.pcapDirName}/{srcIf}.pcap {self.pcapDirName}/replay_{srcIf}.pcap"
                 )
@@ -468,7 +252,7 @@ class lbf_forwarder:
                     os.system(f"tc qdisc replace dev {srcIf} root lbf")
                 replayFile = f"{self.pcapDirName}/replay_{srcIf}.pcap"
             else:
-                replayFile = self.pcap
+                replayFile = self.args.pcap
             tcp_replay_proc = multiprocessing.Process(target=self.tcp_replay_process,args=(srcNode, srcIf, replayFile,))
             tcp_replay_proc.start()
             
