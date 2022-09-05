@@ -1274,6 +1274,7 @@ enum {
 
 struct tc_lbf_xstats {
 	__u32 delay; /* in-queue delay seen by most recently dequeued packet */
+	__u32 overlimit; /* Packet dropped due to full queue*/
 };
 
 #endif
