@@ -79,7 +79,11 @@ static int lbf_print_xstats(struct qdisc_util *qu, FILE *f,
 	}
 
 	print_uint(PRINT_JSON, "delay", NULL, st->delay);
-	print_string(PRINT_FP, NULL, "  delay %s", sprint_time(st->delay, b1));
+	print_string(PRINT_FP, NULL, "  delay %s ", sprint_time(st->delay, b1));
+	print_uint(PRINT_JSON, "overlimit", NULL, st->overlimit);
+	// print_uint(PRINT_ANY, " delay", "delay %u ", st->delay);
+	print_uint(PRINT_ANY, " overlimit", "overlimit %up", st->overlimit);
+	// print_string(PRINT_FP, NULL, "  overlimit %s", sprint_size(st->overlimit, b1));
 
 	return 0;
 }

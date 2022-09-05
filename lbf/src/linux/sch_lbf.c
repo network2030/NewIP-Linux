@@ -32,6 +32,7 @@ struct lbf_vars
 struct lbf_stats
 {
 	psched_time_t delay;
+	__u32 overlimit;
 };
 
 struct lbf_sched_data
@@ -88,6 +89,7 @@ static void lbf_vars_init(struct lbf_vars *vars)
 static void lbf_stats_init(struct lbf_stats *stats)
 {
 	stats->delay = PSCHED_PASTPERFECT;
+	stats->overlimit = 0;
 }
 
 static struct lbf_skb_cb *get_lbf_cb(const struct sk_buff *skb)
@@ -280,11 +282,14 @@ lbf_get_hnode (struct lbf_hnode_head ** list_ptr, int lqbudget)
 static int lbf_enqueue(struct sk_buff *skb, struct Qdisc *sch,
 					   struct sk_buff **to_free)
 {
-	if (unlikely(qdisc_qlen(sch) >= sch->limit))
-		return qdisc_drop(skb, sch, to_free);
-
-	lbf_set_enqueue_time(skb);
 	struct lbf_sched_data* q = qdisc_priv(sch);
+	if (unlikely(qdisc_qlen(sch) >= sch->limit))
+	{
+		q->stats.overlimit++;
+		return qdisc_drop(skb, sch, to_free);
+	}
+	lbf_set_enqueue_time(skb);
+	// struct lbf_sched_data* q = qdisc_priv(sch);
 	struct ethhdr *eth = (struct ethhdr *)skb_mac_header(skb);
 	if (eth->h_proto == htons(ETH_P_NEWIP))
 	{
@@ -348,6 +353,7 @@ static int lbf_enqueue(struct sk_buff *skb, struct Qdisc *sch,
 
 					// early discard
 					if ((e_delay_new + fib_todelay) > max_delay) {
+						qdisc_qstats_drop(sch);
 						printk( "%s(): iif early discard edelay %hu todelay %hu "
 							"maxdelay %hu\n", __FUNCTION__,e_delay_new, 
 							fib_todelay, max_delay); 
@@ -385,7 +391,8 @@ static int lbf_enqueue(struct sk_buff *skb, struct Qdisc *sch,
 				}
 
 				pnode_queue_add(hnode, skb, tmin_nsec, tmax_nsec, trcv);
-
+				qdisc_qstats_backlog_inc(sch, skb);
+				sch->q.qlen++;
 				return NET_XMIT_SUCCESS;
 			}
 		}
@@ -563,6 +570,7 @@ static struct sk_buff *lbf_dequeue(struct Qdisc *sch)
 		if (q->next_pnode->tmax_nsec < curr_time && q->vars.hops_left == 0)
 		{
 			printk("packet expired, maybe watchdog is late");
+			qdisc_qstats_drop(sch);
 			q->next_pnode->realpkt = NULL;
 			remove_pnode (q->next_pnode);
 			q->next_pnode = NULL;
@@ -614,6 +622,9 @@ static struct sk_buff *lbf_dequeue(struct Qdisc *sch)
 	if (likely(skb != NULL)) 
 	{
 		skb->next = NULL;
+		qdisc_qstats_backlog_dec(sch, skb);
+		qdisc_bstats_update(sch, skb);
+		sch->q.qlen--;
 		return skb;
 	}
 
@@ -743,7 +754,8 @@ static int lbf_dump_stats(struct Qdisc *sch, struct gnet_dump *d)
 {
 	struct lbf_sched_data *q = qdisc_priv(sch);
 	struct tc_lbf_xstats st = {
-		.delay = div_u64(PSCHED_TICKS2NS(q->stats.delay), NSEC_PER_USEC)};
+		.delay = div_u64(PSCHED_TICKS2NS(q->stats.delay), NSEC_PER_USEC),
+		.overlimit = q->stats.overlimit};
 
 	return gnet_stats_copy_app(d, &st, sizeof(st));
 }
